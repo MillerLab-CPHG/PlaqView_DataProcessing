@@ -3,3 +3,6 @@
 *.pdf
 *.txt
 *.gz
+*.h5ad
+*.csv
+*.h5seurat

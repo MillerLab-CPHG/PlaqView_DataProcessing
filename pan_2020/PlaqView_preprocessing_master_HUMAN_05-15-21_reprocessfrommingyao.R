@@ -10,6 +10,8 @@ library(SeuratData)
 library(magrittr)
 library(ggrepel)
 library(dyno)
+library(readxl)
+library(SeuratDisk)
 
 original_color_list <-
   {c("rosybrown2",
@@ -36,10 +38,188 @@ color_function <- colorRampPalette(original_color_list)
 manual_color_list <- color_function(40) # change this if clusters >40
 
 
-plaqviewobj <- readRDS(file = "Pan_2020.rds")
-plaqviewobj.cds <- readRDS(file = "Pan_2020_CDS.rds")
+#######################################################################
+#### ALL DATA MUST BE IN .RDS AS A SEURAT OBJECT BEFORE PROCEEDING #### 
+#######################################################################
+#### this is reprocess from mingyao's shared human .rds ####
+#### STEP1: READ DATASET DIRECTORY ####
+plaqviewobj <- readRDS(file = "pan_from_mingyao_human.rds")
+plaqviewobj <- UpdateSeuratObject(plaqviewobj)
 
-#### MONOCLE3 TRAJECTORY INFERENCE ----
+
+#### STEP2: SEURAT PROCESS ####
+# Run the standard workflow for visualization and clustering
+plaqviewobj <- ScaleData(plaqviewobj, verbose = FALSE)
+plaqviewobj <- RunPCA(plaqviewobj, npcs = 30, verbose = FALSE)
+plaqviewobj <- RunUMAP(plaqviewobj, reduction = "pca", dims = 1:30)
+plaqviewobj <- FindNeighbors(plaqviewobj, reduction = "pca", dims = 1:30)
+plaqviewobj <- FindClusters(plaqviewobj, resolution = 0.5)
+
+#### STEP3: SINGLER ----
+# BiocManager::install("SingleR")
+# here we are using Human Primary Cell Atlas design for blood
+# https://bioconductor.org/packages/3.12/data/experiment/vignettes/celldex/inst/doc/userguide.html#2_General-purpose_references
+hpca.se <- celldex::HumanPrimaryCellAtlasData() # build the reference
+hpca.se
+
+# now run the prediction using the reference
+# singleR requires that it be in a 'singlecellexperiment' format
+# they are workout agnostic
+
+for_singleR_input <- GetAssayData(plaqviewobj)
+pred.plaqviewobj <- SingleR(test = for_singleR_input, 
+                         ref = hpca.se, 
+                         label = hpca.se$label.main) # reference cell types
+pred.plaqviewobj
+# summarize distribution
+table(pred.plaqviewobj$labels)
+
+# to show annotation confidence map
+plotScoreHeatmap(pred.plaqviewobj)
+
+# to show # that are pruned due to low score
+summary(is.na(pred.plaqviewobj$pruned.labels))
+
+### to place the singleR predictions into Seurat as a sep unit ###
+# seurat.obj[["SingleR.labels"]] <- singler.results$labels
+plaqviewobj[["SingleR.labels"]] <- pred.plaqviewobj$labels # this nest under metadata
+
+# Copy over the labels and pruned.labels (Note: any other column of the results could be used as well)
+plaqviewobj$SingleR.pruned.calls <- pred.plaqviewobj$pruned.labels
+plaqviewobj$SingleR.calls <- pred.plaqviewobj$labels
+
+#### STEP3A: RECODE SINGLE-R LABELS ----
+plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], Smooth_muscle_cells = "SMC")
+plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], Endothelial_cells = "EC")
+plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], NK_cell = "NK")
+plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], Chondrocytes = "CH")
+plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], Fibroblasts = "FB")
+plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], Monocyte = "Mono")
+plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], B_cell = "B_Cells")
+plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], Macrophage = "Mø")
+plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], Tissue_stem_cells = "SC")
+plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], T_cells = "T_Cells")
+plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], 'Pre-B_cell_CD34-' = "PreB_CD34-")
+plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], 'Pro-B_cell_CD34+' = "ProB_CD34+")
+
+
+table(plaqviewobj@meta.data[["SingleR.calls"]])
+
+
+#### STEP3B: scCATCH ####
+Idents(object = plaqviewobj) <- "seurat_clusters"
+
+clu_markers <- findmarkergenes(
+  plaqviewobj,
+  species = "Human",
+  cluster = 'All',
+  match_CellMatch = FALSE, # set T for large dataset
+  cancer = NULL,
+  tissue = NULL,
+  cell_min_pct = 0.25,
+  logfc = 0.25,
+  pvalue = 0.05
+)
+
+
+## blood vessell ## 
+clu_ann_BV <- scCATCH(clu_markers$clu_markers,
+                      species = "Human",
+                      cancer = NULL,
+                      tissue = "Blood vessel")
+
+bv_annotations <- clu_ann_BV$cell_type
+names(bv_annotations) <- levels(plaqviewobj)
+bv_annotations <- replace_na(bv_annotations, "Unknown")
+plaqviewobj[["scCATCH_BV"]] <- bv_annotations[match(plaqviewobj@meta.data$seurat_clusters, names(bv_annotations))]
+
+## heart ##
+clu_ann_HT <- scCATCH(clu_markers$clu_markers,
+                      species = "Human",
+                      cancer = NULL,
+                      tissue = "Heart")
+# write.csv(clu_ann, file = "scCATCH_vs_singleR_heart.csv")
+bv_annotations <- clu_ann_HT$cell_type
+names(bv_annotations) <- levels(plaqviewobj)
+bv_annotations <- replace_na(bv_annotations, "Unknown")
+plaqviewobj[["scCATCH_Heart"]] <- bv_annotations[match(plaqviewobj@meta.data$seurat_clusters, names(bv_annotations))]
+
+
+## blood ###
+clu_ann_Blood <- scCATCH(clu_markers$clu_markers,
+                         species = "Human",
+                         cancer = NULL,
+                         tissue = "Blood")
+# write.csv(clu_ann, file = "scCATCH_vs_singleR_blood.csv")
+
+bv_annotations <- clu_ann_Blood$cell_type
+names(bv_annotations) <- levels(plaqviewobj)
+bv_annotations <- replace_na(bv_annotations, "Unknown")
+plaqviewobj[["scCATCH_Blood"]] <- bv_annotations[match(plaqviewobj@meta.data$seurat_clusters, names(bv_annotations))]
+
+#### STEP3C: rename manual label####
+
+plaqviewobj[["manually_annotated_labels"]] <- plaqviewobj@meta.data[["new_ident"]]
+
+#### STEP3D: SEURAT/TABULA SAPIENS LABELING ####
+#### load tabulus sapiens reference
+# using only the vascular data
+
+humanatlasref <- LoadH5Seurat(file = "~/Google Drive/UVA/Grad School/Projects/PlaqView_Preprocess/PlaqView_DataProcessing/Tabula_sapiens_reference/TS_Vasculature.h5seurat", assays = "RNA")
+
+#### preprocess ref seurat 
+Idents(humanatlasref) <-  humanatlasref@meta.data[["Annotation"]]
+
+humanatlasref <- NormalizeData(humanatlasref, verbose = T)
+humanatlasref <- FindVariableFeatures(humanatlasref, selection.method = "vst", verbose = T)
+
+anchors <- FindTransferAnchors(reference = humanatlasref, query = plaqviewobj, 
+                               dims = 1:30)
+predictions <- TransferData(anchorset = anchors, refdata = humanatlasref$Annotation, 
+                            dims = 1:30)
+plaqviewobj <- AddMetaData(plaqviewobj, metadata = predictions)
+
+#### rename transferred column metadata 
+plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <- plaqviewobj@meta.data[["predicted.id"]]
+
+# capitalize the lettering
+plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <-str_to_title(plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]], locale = "en")
+
+# set to active idents
+Idents(plaqviewobj) <- plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]]
+
+#### STEP3E: recode tabula sapien labels ####
+plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <- recode(plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]], 
+                                                                      'Smooth Muscle Cell' = "SMCs")
+plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <- recode(plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]], 
+                                                                      'Pancreatic Acinar Cell' = "Panc Acinar Cell")
+plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <- recode(plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]], 
+                                                                      'Fibroblast' = "FB")
+plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <- recode(plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]], 
+                                                                      'Endothelial Cell' = "EC")
+plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <- recode(plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]], 
+                                                                      'Macrophage' = "Mø")
+plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <- recode(plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]], 
+                                                                      'Natural Killer Cell' = "NK")
+Idents(plaqviewobj) <- plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]]
+
+#### plot the cells 
+DimPlot(
+  plaqviewobj,
+  reduction = "umap",
+  label = TRUE,
+  label.size = 5,
+  repel = T,
+  # repel labels
+  pt.size = 1,
+  cols = manual_color_list) + # group.by is important, use this to call metadata separation
+  theme(legend.position="bottom", 
+        legend.box = "vertical") +
+  ggtitle("UMAP by Cell Type") +
+  theme(plot.title = element_text(hjust =  0.5)) +
+  guides(color = guide_legend(nrow = 5))
+
+#### STEP4: MONOCLE3 TRAJECTORY INFERENCE ----
 # in previous versions we tried the seurat wrapper it just didnt work
 # below we manually wrap the data ourselves
 
@@ -54,8 +234,8 @@ genemd <- data.frame(gene_short_name = row.names(expressiondata),
 
 # Construct monocle cds
 plaqviewobj.cds <- new_cell_data_set(expression_data = expressiondata,
-                                     cell_metadata = cellmd,
-                                     gene_metadata = genemd)
+                              cell_metadata = cellmd,
+                              gene_metadata = genemd)
 plaqviewobj.cds <- preprocess_cds(plaqviewobj.cds, num_dim = 30) # we used 30 in earlier seurat scripts
 
 # 
@@ -64,7 +244,7 @@ plaqviewobj.cds <- reduce_dimension(plaqviewobj.cds, reduction_method = "UMAP")
 plaqviewobj.cds <- cluster_cells(plaqviewobj.cds, reduction_method = "UMAP")
 
 
-#### TRANSFER SEURAT EMBEDDINGS #####
+#### STEP4A: TRANSFER SEURAT EMBEDDINGS ###
 # Note that these may be calculated on the Integrated object, not the counts
 #   and thus will involve fewer genes
 temp.cds <- ProjectDim(plaqviewobj, reduction = "pca") # this will be removed
@@ -78,7 +258,7 @@ plaqviewobj.cds@int_colData@listData$reducedDims$UMAP <- temp.cds@reductions$uma
 ## transfer singleR labels to moncle3 object
 colData(plaqviewobj.cds)$assigned_cell_type <- plaqviewobj@meta.data[["SingleR.calls"]] # call this by opening the object
 
-#### MONOCLE3 CONT. ----
+#### MONOCLE3 CONT. ---
 # now learn the PATH (trajectory)
 plaqviewobj.cds <- learn_graph(plaqviewobj.cds)
 
@@ -105,18 +285,18 @@ plot_cells(plaqviewobj.cds,
 dev.off()
 
 mon3 <- plot_cells(plaqviewobj.cds,
-                   color_cells_by = "assigned_cell_type",
-                   label_groups_by_cluster=F,
-                   show_trajectory_graph = T,
-                   trajectory_graph_segment_size = 1,
-                   label_leaves=F, # this gives a little node label (outcome)
-                   label_roots = T,
-                   label_branch_points = F,
-                   graph_label_size = 1, # size of # in circle
-                   group_label_size = 3,
-                   cell_size = 1,
-                   alpha = 0.7,
-                   scale_to_range = T) +
+           color_cells_by = "assigned_cell_type",
+           label_groups_by_cluster=F,
+           show_trajectory_graph = T,
+           trajectory_graph_segment_size = 1,
+           label_leaves=F, # this gives a little node label (outcome)
+           label_roots = T,
+           label_branch_points = F,
+           graph_label_size = 1, # size of # in circle
+           group_label_size = 3,
+           cell_size = 1,
+           alpha = 0.7,
+           scale_to_range = T) +
   scale_color_manual(values = manual_color_list) # sync color scheme
 
 saveRDS(mon3, file = "dyno/monocle3.rds")
@@ -137,7 +317,7 @@ plot_cells(plaqviewobj.cds,
 dev.off()
 
 
-# #### NOT RUN Subset Trajectory & analysis of SMC----
+# #### STEP4B: (NOT RUN) Subset Trajectory & analysis of SMC----
 # plaqviewobj.cds_subset <- choose_cells(plaqviewobj.cds) # calls up shiny app
 # 
 # plot_cells(plaqviewobj.cds_subset,
@@ -153,7 +333,7 @@ dev.off()
 #            alpha = 0.7,
 #            scale_to_range = T) 
 # 
-# #### NOT RUN MORAN's I Test of Autocorrelation ####
+# #### STEP4C: (NOT RUN) MORAN's I Test of Autocorrelation ####
 # now we can extrapolate genes that are differentially expressed in this region
 # Moran’s I is a measure of multi-directional and multi-dimensional spatial autocorrelation. 
 # the statistic tells you whether cells at nearby positions on a 
@@ -224,13 +404,7 @@ plot_cells(plaqviewobj.cds_subset,
            scale_to_range = T)
 dev.off()
 
-
-#### rename manual label####
-
-plaqviewobj[["manually_annotated_labels"]] <- "ORIGINAL AUTHORS HAVE NOT SUPPLIED ANNOTATIONS, PLEASE USE SINGLER and OTHER LABELING METHODS"
-
-
-#### DYNO TRAJECTORY INFERENCES ####
+#### STEP5: DYNO TRAJECTORY INFERENCES ####
 object_counts <- Matrix::t(as(as.matrix(plaqviewobj@assays$RNA@counts), 'sparseMatrix'))
 object_expression <- Matrix::t(as(as.matrix(plaqviewobj@assays$RNA@data), 'sparseMatrix'))
 object_cellinfo <- plaqviewobj@meta.data[["SingleR.labels"]]
@@ -240,7 +414,7 @@ plaqviewobj.dyno <- wrap_expression(
   expression = object_expression)
 
 
-#### slingshot: construct the model ####
+#### slingshot: construct the model ###
 # make sure to call up docker images
 
 model <- infer_trajectory(plaqviewobj.dyno, "slingshot", verbose = T)
@@ -269,7 +443,7 @@ plot_dimred(
   feature_oi = "FN1"
 )
 
-#### scorpius: construct the model ####
+#### scorpius: construct the model ###
 # make sure to call up docker images
 
 model <- infer_trajectory(plaqviewobj.dyno, "scorpius")
@@ -291,7 +465,7 @@ saveRDS(scorpius, file = "dyno/scorpius.rds")
 scorpius
 dev.off()
 
-#### PAGA: construct the model ####
+#### PAGA: construct the model ###
 model <- infer_trajectory(plaqviewobj.dyno, "projected_paga", verbose = T)
 
 #### PAGA: project the model ###
@@ -309,26 +483,25 @@ paga
 saveRDS(paga, file = "dyno/paga.rds")
 
 
-#### REDUCE SIZE & OUTPUT ####
+#### STEP6: REDUCE SIZE & OUTPUT ####
 plaqviewobj <- DietSeurat(plaqviewobj, counts = T, data = T, dimreducs = c('umap'))
 
-saveRDS(plaqviewobj, file = "Pan_2020.rds")
-saveRDS(plaqviewobj.cds, file = "Pan_2020_CDS.rds")
+saveRDS(plaqviewobj, file = "Pan_2020_05152021.rds")
+saveRDS(plaqviewobj.cds, file = "Pan_2020_05152021_CDS.rds")
 
 
-plaqviewobj <- readRDS(file = "Pan_2020.rds")
-plaqviewobj.cds <- readRDS(file = "Pan_2020_CDS.rds")
+plaqviewobj <- readRDS(file = "Pan_2020_05152021.rds")
 
-#### DIFF EX GENE LIST ####
+#### STEP7: DIFF EX GENE LIST ####
 Idents(object = plaqviewobj) <- "SingleR.calls"
 difflist <- Seurat::FindAllMarkers(plaqviewobj)
 write_csv(difflist, file = "differential/diff_by_singleR.csv")
 
 Idents(object = plaqviewobj) <- "manually_annotated_labels"
-singlerdifflist <- Seurat::FindAllMarkers(plaqviewobj)
+difflist <- Seurat::FindAllMarkers(plaqviewobj)
 write_csv(difflist, file = "differential/diff_by_author.csv")
 
 Idents(object = plaqviewobj) <- "seurat_clusters"
-singlerdifflist <- Seurat::FindAllMarkers(plaqviewobj)
+difflist <- Seurat::FindAllMarkers(plaqviewobj)
 write_csv(difflist, file = "differential/diff_by_seurat.csv")
 

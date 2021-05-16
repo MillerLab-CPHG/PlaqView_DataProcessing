@@ -11,6 +11,7 @@ library(magrittr)
 library(ggrepel)
 library(dyno)
 library(readxl)
+library(SeuratDisk)
 
 original_color_list <-
   {c("rosybrown2",
@@ -41,11 +42,52 @@ manual_color_list <- color_function(40) # change this if clusters >40
 #### ALL DATA MUST BE IN .RDS AS A SEURAT OBJECT BEFORE PROCEEDING #### 
 #######################################################################
 #### STEP1: READ DATASET DIRECTORY ####
-dataset_list <- read_excel("~/Google Drive/UVA/Grad School/Projects/PlaqView_Preprocess/Data_Processing_Notes.xlsx")
+#### unzip from GEO ####
+gset1 <- read.delim("GSE155512_RAW/GSM4705589_RPE004_matrix.txt",  row.names=1)
+gset2 <- read.delim("GSE155512_RAW/GSM4705590_RPE005_matrix.txt",  row.names=1)
+gset3 <- read.delim("GSE155512_RAW/GSM4705591_RPE006_matrix.txt",  row.names=1)
 
-paths.to.object <- dataset_list$PATH
+gset1 <- CreateSeuratObject(
+  gset1,
+  project = "pan_2020",
+  assay = "RNA",
+  min.cells = 0,
+  min.features = 0
+)
 
-readRDS(file = paste(paths.to.object))
+gset2 <- CreateSeuratObject(
+  gset2,
+  project = "pan_2020",
+  assay = "RNA",
+  min.cells = 0,
+  min.features = 0
+)
+
+gset3 <- CreateSeuratObject(
+  gset3,
+  project = "pan_2020",
+  assay = "RNA",
+  min.cells = 0,
+  min.features = 0
+)
+
+plaqview_list <- list(gset1, gset2, gset3)
+plaqview_list <- lapply(X = plaqview_list, FUN = function(x) {
+  x <- NormalizeData(x)
+  x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = 2000)
+})
+
+# find integration anchors
+features <- SelectIntegrationFeatures(object.list = plaqview_list)
+anchors <- FindIntegrationAnchors(object.list = plaqview_list, anchor.features = features)
+
+# integrate the samples  
+plaqviewobj <- IntegrateData(anchorset = anchors)
+DefaultAssay(plaqviewobj) <- "integrated" # set defaul to integrated
+
+
+
+
 #### STEP2: SEURAT PROCESS ####
 # Run the standard workflow for visualization and clustering
 plaqviewobj <- ScaleData(plaqviewobj, verbose = FALSE)
@@ -159,7 +201,57 @@ plaqviewobj[["scCATCH_Blood"]] <- bv_annotations[match(plaqviewobj@meta.data$seu
 #### STEP3C: rename manual label####
 plaqviewobj[["manually_annotated_labels"]] <- "ORIGINAL AUTHORS HAVE NOT SUPPLIED ANNOTATIONS, PLEASE USE SINGLER and OTHER LABELING METHODS"
 
-#### STEP3D: ####
+#### STEP3D: SEURAT/TABULA SAPIENS LABELING ####
+#### load tabulus sapiens reference
+humanatlasref <- LoadH5Seurat(file = "~/Google Drive/UVA/Grad School/Projects/PlaqView_Preprocess/PlaqView_DataProcessing/Tabula_sapiens_reference/TS_Vasculature.h5seurat", assays = "RNA")
+# using only the vascular data
+
+anchors <- FindTransferAnchors(reference = humanatlasref, query = plaqviewobj, 
+                               dims = 1:30)
+predictions <- TransferData(anchorset = anchors, refdata = humanatlasref$Annotation, 
+                            dims = 1:30)
+plaqviewobj <- AddMetaData(plaqviewobj, metadata = predictions)
+
+#### rename transferred column metadata 
+plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <- plaqviewobj@meta.data[["predicted.id"]]
+
+# capitalize the lettering
+plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <-str_to_title(plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]], locale = "en")
+
+# set to active idents
+Idents(plaqviewobj) <- plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]]
+
+#### STEP3E: recode tabula sapien labels ####
+plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <- recode(plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]], 
+                                                                      'Smooth Muscle Cell' = "SMCs")
+plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <- recode(plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]], 
+                                                                      'Pancreatic Acinar Cell' = "Panc Acinar Cell")
+plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <- recode(plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]], 
+                                                                      'Fibroblast' = "FB")
+plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <- recode(plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]], 
+                                                                      'Endothelial Cell' = "EC")
+plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <- recode(plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]], 
+                                                                      'Macrophage' = "Mø")
+plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <- recode(plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]], 
+                                                                      'Natural Killer Cell' = "NK")
+Idents(plaqviewobj) <- plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]]
+
+#### plot the cells 
+DimPlot(
+  plaqviewobj,
+  reduction = "umap",
+  label = TRUE,
+  label.size = 5,
+  repel = T,
+  # repel labels
+  pt.size = 1,
+  cols = manual_color_list) + # group.by is important, use this to call metadata separation
+  theme(legend.position="bottom", 
+        legend.box = "vertical") +
+  ggtitle("UMAP by Cell Type") +
+  theme(plot.title = element_text(hjust =  0.5)) +
+  guides(color = guide_legend(nrow = 5))
+
 #### STEP4: MONOCLE3 TRAJECTORY INFERENCE ----
 # in previous versions we tried the seurat wrapper it just didnt work
 # below we manually wrap the data ourselves
@@ -427,11 +519,11 @@ saveRDS(paga, file = "dyno/paga.rds")
 #### STEP6: REDUCE SIZE & OUTPUT ####
 plaqviewobj <- DietSeurat(plaqviewobj, counts = T, data = T, dimreducs = c('umap'))
 
-saveRDS(plaqviewobj, file = "Pan_2020.rds")
-saveRDS(plaqviewobj.cds, file = "Pan_2020_CDS.rds")
+saveRDS(plaqviewobj, file = "Pan_2020_05142021.rds")
+saveRDS(plaqviewobj.cds, file = "Pan_2020_05142021_CDS.rds")
 
 
-plaqviewobj <- readRDS(file = "Pan_2020.rds")
+plaqviewobj <- readRDS(file = "Pan_2020_05142021.rds")
 
 #### STEP7: DIFF EX GENE LIST ####
 Idents(object = plaqviewobj) <- "SingleR.calls"
