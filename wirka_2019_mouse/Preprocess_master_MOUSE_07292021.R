@@ -11,6 +11,7 @@ library(magrittr)
 library(ggrepel)
 library(dyno)
 library(readxl)
+library(SeuratDisk)
 
 original_color_list <-
   {c("rosybrown2",
@@ -41,24 +42,23 @@ manual_color_list <- color_function(40) # change this if clusters >40
 #### ALL DATA MUST BE IN .RDS AS A SEURAT OBJECT BEFORE PROCEEDING #### 
 #######################################################################
 #### STEP1: READ DATASET DIRECTORY ####
-dataset_list <- read_excel("~/Google Drive/UVA/Grad School/Projects/PlaqView_Preprocess/Data_Processing_Notes.xlsx")
+plaqviewobj <- readRDS(file = "UNPROCESSED.rds")
+plaqviewobj <- UpdateSeuratObject(plaqviewobj)
 
-paths.to.object <- dataset_list$PATH
 
-readRDS(file = paste(paths.to.object))
 #### STEP2: SEURAT PROCESS ####
 # Run the standard workflow for visualization and clustering
-plaqviewobj <- ScaleData(plaqviewobj, verbose = FALSE)
-plaqviewobj <- RunPCA(plaqviewobj, npcs = 30, verbose = FALSE)
+plaqviewobj <- ScaleData(plaqviewobj, verbose = T)
+plaqviewobj <- FindVariableFeatures(plaqviewobj, verbose = T)
+plaqviewobj <- RunPCA(plaqviewobj, npcs = 30, verbose = T)
 plaqviewobj <- RunUMAP(plaqviewobj, reduction = "pca", dims = 1:30)
 plaqviewobj <- FindNeighbors(plaqviewobj, reduction = "pca", dims = 1:30)
 plaqviewobj <- FindClusters(plaqviewobj, resolution = 0.5)
 
 #### STEP3: SINGLER ----
 # BiocManager::install("SingleR")
-# here we are using Human Primary Cell Atlas design for blood
 # https://bioconductor.org/packages/3.12/data/experiment/vignettes/celldex/inst/doc/userguide.html#2_General-purpose_references
-hpca.se <- celldex::HumanPrimaryCellAtlasData() # build the reference
+hpca.se <- celldex::MouseRNAseqData()
 hpca.se
 
 # now run the prediction using the reference
@@ -67,8 +67,8 @@ hpca.se
 
 for_singleR_input <- GetAssayData(plaqviewobj)
 pred.plaqviewobj <- SingleR(test = for_singleR_input, 
-                         ref = hpca.se, 
-                         label = hpca.se$label.main) # reference cell types
+                            ref = hpca.se, 
+                            label = hpca.se$label.main) # reference cell types
 pred.plaqviewobj
 # summarize distribution
 table(pred.plaqviewobj$labels)
@@ -110,11 +110,11 @@ Idents(object = plaqviewobj) <- "seurat_clusters"
 
 clu_markers <- findmarkergenes(
   plaqviewobj,
-  species = "Human",
+  species = 'Mouse',
   cluster = 'All',
-  match_CellMatch = FALSE, # set T for large dataset
+  match_CellMatch = TRUE, # set T for large dataset
   cancer = NULL,
-  tissue = NULL,
+  tissue = 'Aorta',
   cell_min_pct = 0.25,
   logfc = 0.25,
   pvalue = 0.05
@@ -123,7 +123,7 @@ clu_markers <- findmarkergenes(
 
 ## blood vessell ## 
 clu_ann_BV <- scCATCH(clu_markers$clu_markers,
-                      species = "Human",
+                      species = "Mouse",
                       cancer = NULL,
                       tissue = "Blood vessel")
 
@@ -134,7 +134,7 @@ plaqviewobj[["scCATCH_BV"]] <- bv_annotations[match(plaqviewobj@meta.data$seurat
 
 ## heart ##
 clu_ann_HT <- scCATCH(clu_markers$clu_markers,
-                      species = "Human",
+                      species = "Mouse",
                       cancer = NULL,
                       tissue = "Heart")
 # write.csv(clu_ann, file = "scCATCH_vs_singleR_heart.csv")
@@ -146,7 +146,7 @@ plaqviewobj[["scCATCH_Heart"]] <- bv_annotations[match(plaqviewobj@meta.data$seu
 
 ## blood ###
 clu_ann_Blood <- scCATCH(clu_markers$clu_markers,
-                         species = "Human",
+                         species = "Mouse",
                          cancer = NULL,
                          tissue = "Blood")
 # write.csv(clu_ann, file = "scCATCH_vs_singleR_blood.csv")
@@ -157,9 +157,73 @@ bv_annotations <- replace_na(bv_annotations, "Unknown")
 plaqviewobj[["scCATCH_Blood"]] <- bv_annotations[match(plaqviewobj@meta.data$seurat_clusters, names(bv_annotations))]
 
 #### STEP3C: rename manual label####
-plaqviewobj[["manually_annotated_labels"]] <- "ORIGINAL AUTHORS HAVE NOT SUPPLIED ANNOTATIONS, PLEASE USE SINGLER and OTHER LABELING METHODS"
 
-#### STEP3D: ####
+plaqviewobj[["manually_annotated_labels"]] <- "Author has not provided annotations for this set"
+
+#### STEP3D: SEURAT/TABULA MURINE LABELING ####
+#### load tabulus reference
+# using only the aorta and heart data
+mouseatlas <- read_rds(file = "~/Google Drive/UVA/Grad School/Projects/PlaqView/DataProcessing/Tabula_muris_reference/TM_aorta_heart.rds")
+mouseatlas <- UpdateSeuratObject(mouseatlas)
+
+#### preprocess ref seurat 
+Idents(mouseatlas) <-  mouseatlas@meta.data[["cell_ontology_class"]]
+DefaultAssay(mouseatlas) <- "RNA" 
+DefaultAssay(plaqviewobj) <- "RNA"
+
+mouseatlas <- NormalizeData(mouseatlas, verbose = T)
+mouseatlas <- FindVariableFeatures(mouseatlas, selection.method = "vst", verbose = T)
+ElbowPlot(plaqviewobj, ndims = 30, reduction = "pca")
+ElbowPlot(mouseatlas, ndims = 30, reduction = "pca")
+
+anchors <- FindTransferAnchors(reference = mouseatlas, query = plaqviewobj, 
+                               dims = 1:10,
+                               approx = FALSE)
+
+predictions <- TransferData(anchorset = anchors, refdata = mouseatlas@meta.data[["cell_ontology_class"]], 
+                            dims = 1:10)
+plaqviewobj <- AddMetaData(plaqviewobj, metadata = predictions)
+
+#### rename transferred column metadata 
+plaqviewobj@meta.data[["predicted.id_Tabula"]] <- plaqviewobj@meta.data[["predicted.id"]]
+
+# capitalize the lettering
+plaqviewobj@meta.data[["predicted.id_Tabula"]] <-str_to_title(plaqviewobj@meta.data[["predicted.id_Tabula"]], locale = "en")
+
+# set to active idents
+Idents(plaqviewobj) <- plaqviewobj@meta.data[["predicted.id_Tabula"]]
+
+#### STEP3E: recode tabula muris labels ####
+plaqviewobj@meta.data[["predicted.id_Tabula"]] <- recode(plaqviewobj@meta.data[["predicted.id_Tabula"]], 
+                                                                 'Smooth Muscle Cell' = "SMCs")
+plaqviewobj@meta.data[["predicted.id_Tabula"]] <- recode(plaqviewobj@meta.data[["predicted.id_Tabula"]], 
+                                                                 'Pancreatic Acinar Cell' = "Panc Acinar Cell")
+plaqviewobj@meta.data[["predicted.id_Tabula"]] <- recode(plaqviewobj@meta.data[["predicted.id_Tabula"]], 
+                                                                 'Fibroblast' = "FB")
+plaqviewobj@meta.data[["predicted.id_Tabula"]] <- recode(plaqviewobj@meta.data[["predicted.id_Tabula"]], 
+                                                                 'Endothelial Cell' = "EC")
+plaqviewobj@meta.data[["predicted.id_Tabula"]] <- recode(plaqviewobj@meta.data[["predicted.id_Tabula"]], 
+                                                                 'Macrophage' = "Mø")
+plaqviewobj@meta.data[["predicted.id_Tabula"]] <- recode(plaqviewobj@meta.data[["predicted.id_Tabula"]], 
+                                                                 'Natural Killer Cell' = "NK")
+Idents(plaqviewobj) <- plaqviewobj@meta.data[["predicted.id_Tabula"]]
+
+#### plot the cells 
+DimPlot(
+  plaqviewobj,
+  reduction = "umap",
+  label = TRUE,
+  label.size = 5,
+  repel = T,
+  # repel labels
+  pt.size = 1,
+  cols = manual_color_list) + # group.by is important, use this to call metadata separation
+  theme(legend.position="bottom", 
+        legend.box = "vertical") +
+  ggtitle("UMAP by Cell Type") +
+  theme(plot.title = element_text(hjust =  0.5)) +
+  guides(color = guide_legend(nrow = 5))
+
 #### STEP4: MONOCLE3 TRAJECTORY INFERENCE ----
 # in previous versions we tried the seurat wrapper it just didnt work
 # below we manually wrap the data ourselves
@@ -175,8 +239,8 @@ genemd <- data.frame(gene_short_name = row.names(expressiondata),
 
 # Construct monocle cds
 plaqviewobj.cds <- new_cell_data_set(expression_data = expressiondata,
-                              cell_metadata = cellmd,
-                              gene_metadata = genemd)
+                                     cell_metadata = cellmd,
+                                     gene_metadata = genemd)
 plaqviewobj.cds <- preprocess_cds(plaqviewobj.cds, num_dim = 30) # we used 30 in earlier seurat scripts
 
 # 
@@ -226,18 +290,18 @@ plot_cells(plaqviewobj.cds,
 dev.off()
 
 mon3 <- plot_cells(plaqviewobj.cds,
-           color_cells_by = "assigned_cell_type",
-           label_groups_by_cluster=F,
-           show_trajectory_graph = T,
-           trajectory_graph_segment_size = 1,
-           label_leaves=F, # this gives a little node label (outcome)
-           label_roots = T,
-           label_branch_points = F,
-           graph_label_size = 1, # size of # in circle
-           group_label_size = 3,
-           cell_size = 1,
-           alpha = 0.7,
-           scale_to_range = T) +
+                   color_cells_by = "assigned_cell_type",
+                   label_groups_by_cluster=F,
+                   show_trajectory_graph = T,
+                   trajectory_graph_segment_size = 1,
+                   label_leaves=F, # this gives a little node label (outcome)
+                   label_roots = T,
+                   label_branch_points = F,
+                   graph_label_size = 1, # size of # in circle
+                   group_label_size = 3,
+                   cell_size = 1,
+                   alpha = 0.7,
+                   scale_to_range = T) +
   scale_color_manual(values = manual_color_list) # sync color scheme
 
 saveRDS(mon3, file = "dyno/monocle3.rds")
@@ -427,11 +491,10 @@ saveRDS(paga, file = "dyno/paga.rds")
 #### STEP6: REDUCE SIZE & OUTPUT ####
 plaqviewobj <- DietSeurat(plaqviewobj, counts = T, data = T, dimreducs = c('umap'))
 
-saveRDS(plaqviewobj, file = "Pan_2020.rds")
-saveRDS(plaqviewobj.cds, file = "Pan_2020_CDS.rds")
+saveRDS(plaqviewobj, file = "Pan_2020_05152021.rds")
+saveRDS(plaqviewobj.cds, file = "Pan_2020_05152021_CDS.rds")
 
-
-plaqviewobj <- readRDS(file = "Pan_2020.rds")
+plaqviewobj <- readRDS(file = "Pan_2020_05152021.rds")
 
 #### STEP7: DIFF EX GENE LIST ####
 Idents(object = plaqviewobj) <- "SingleR.calls"
@@ -445,4 +508,8 @@ write_csv(difflist, file = "differential/diff_by_author.csv")
 Idents(object = plaqviewobj) <- "seurat_clusters"
 difflist <- Seurat::FindAllMarkers(plaqviewobj)
 write_csv(difflist, file = "differential/diff_by_seurat.csv")
+
+Idents(object = plaqviewobj) <- "predicted.id_tabulus.muris"
+difflist <- Seurat::FindAllMarkers(plaqviewobj)
+write_csv(difflist, file = "differential/diff_by_predicted.id_tabulus.muris.csv")
 
