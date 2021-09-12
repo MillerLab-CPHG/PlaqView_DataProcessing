@@ -1,4 +1,6 @@
-
+data
+archive
+references
 *.rds
 *.pdf
 *.txt
@@ -11,3 +13,5 @@
 *.mtx
 *.tsv
 alencar_2020_mouse/Original Data from Katie Oswainy/scRNAseq count matrices/Exp3 filtered_gene_bc_matrices/02_tomato_filtered_gene_bc_matrices/Icon
+08272021_datafiles_images/.DS_Store
+*.history
