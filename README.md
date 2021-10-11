@@ -25,4 +25,7 @@
  Copy and run "PlaqView_preprocessing_master_HUMAN_05-04-2021.R"
  Note that this is continuously being updated so please refer to the closest available .r processing file on GitHub!
 
-<img src="www/PlaqView_data_processing_diagram_05162021.png" alt="Preprocessing_steps"/>
+ *IMPORTANT*
+ 1) make sure author-provided labels are under metadata "Author_Provided".
+
+![]()<img src="www/PlaqView_data_processing_diagram_05162021.png" alt="Preprocessing_steps"/>

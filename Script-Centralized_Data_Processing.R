@@ -69,58 +69,58 @@ human_process <- function(datasetID){
   plaqviewobj <- FindNeighbors(plaqviewobj, reduction = "pca", dims = 1:30)
   plaqviewobj <- FindClusters(plaqviewobj, resolution = 0.5)
   
-  # #### STEP3: SINGLER ----
-  # # BiocManager::install("SingleR")
-  # # here we are using Human Primary Cell Atlas design for blood
-  # # https://bioconductor.org/packages/3.12/data/experiment/vignettes/celldex/inst/doc/userguide.html#2_General-purpose_references
-  # hpca.se <- celldex::HumanPrimaryCellAtlasData() # build the reference
-  # hpca.se
-  # 
-  # # now run the prediction using the reference
-  # # singleR requires that it be in a 'singlecellexperiment' format
-  # # they are workout agnostic
-  # 
-  # for_singleR_input <- GetAssayData(plaqviewobj)
-  # pred.plaqviewobj <- SingleR(test = for_singleR_input, 
-  #                             ref = hpca.se, 
-  #                             label = hpca.se$label.main) # reference cell types
-  # pred.plaqviewobj
-  # # summarize distribution
-  # table(pred.plaqviewobj$labels)
-  # 
-  # # to show annotation confidence map
-  # plotScoreHeatmap(pred.plaqviewobj)
-  # 
-  # # to show # that are pruned due to low score
-  # summary(is.na(pred.plaqviewobj$pruned.labels))
-  # 
-  # ### to place the singleR predictions into Seurat as a sep unit ###
-  # # seurat.obj[["SingleR.labels"]] <- singler.results$labels
-  # plaqviewobj[["SingleR.labels"]] <- pred.plaqviewobj$labels # this nest under metadata
-  # 
-  # # Copy over the labels and pruned.labels (Note: any other column of the results could be used as well)
-  # plaqviewobj$SingleR.pruned.calls <- pred.plaqviewobj$pruned.labels
-  # plaqviewobj$SingleR.calls <- pred.plaqviewobj$labels
-  # 
-  # #### STEP3A: RECODE SINGLE-R LABELS ----
-  # plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], Smooth_muscle_cells = "SMC")
-  # plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], Endothelial_cells = "EC")
-  # plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], NK_cell = "NK")
-  # plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], Chondrocytes = "CH")
-  # plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], Fibroblasts = "FB")
-  # plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], Monocyte = "Mono")
-  # plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], B_cell = "B_Cells")
-  # plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], Macrophage = "Mø")
-  # plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], Tissue_stem_cells = "SC")
-  # plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], T_cells = "T_Cells")
-  # plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], 'Pre-B_cell_CD34-' = "PreB_CD34-")
-  # plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], 'Pro-B_cell_CD34+' = "ProB_CD34+")
-  # 
-  # 
-  # table(plaqviewobj@meta.data[["SingleR.calls"]])
-  # 
-  # 
-  # #### STEP3B: scCATCH ####
+  #### STEP3: SINGLER ----
+  # BiocManager::install("SingleR")
+  # here we are using Human Primary Cell Atlas design for blood
+  # https://bioconductor.org/packages/3.12/data/experiment/vignettes/celldex/inst/doc/userguide.html#2_General-purpose_references
+  hpca.se <- celldex::HumanPrimaryCellAtlasData() # build the reference
+  hpca.se
+
+  # now run the prediction using the reference
+  # singleR requires that it be in a 'singlecellexperiment' format
+  # they are workout agnostic
+
+  for_singleR_input <- GetAssayData(plaqviewobj)
+  pred.plaqviewobj <- SingleR(test = for_singleR_input,
+                              ref = hpca.se,
+                              label = hpca.se$label.main) # reference cell types
+  pred.plaqviewobj
+  # summarize distribution
+  table(pred.plaqviewobj$labels)
+
+  # to show annotation confidence map
+  plotScoreHeatmap(pred.plaqviewobj)
+
+  # to show # that are pruned due to low score
+  summary(is.na(pred.plaqviewobj$pruned.labels))
+
+  ### to place the singleR predictions into Seurat as a sep unit ###
+  # seurat.obj[["SingleR.labels"]] <- singler.results$labels
+  plaqviewobj[["SingleR.labels"]] <- pred.plaqviewobj$labels # this nest under metadata
+
+  # Copy over the labels and pruned.labels (Note: any other column of the results could be used as well)
+  plaqviewobj$SingleR.pruned.calls <- pred.plaqviewobj$pruned.labels
+  plaqviewobj$SingleR.calls <- pred.plaqviewobj$labels
+
+  #### STEP3A: RECODE SINGLE-R LABELS ----
+  plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], Smooth_muscle_cells = "SMC")
+  plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], Endothelial_cells = "EC")
+  plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], NK_cell = "NK")
+  plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], Chondrocytes = "CH")
+  plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], Fibroblasts = "FB")
+  plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], Monocyte = "Mono")
+  plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], B_cell = "B_Cells")
+  plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], Macrophage = "Mø")
+  plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], Tissue_stem_cells = "SC")
+  plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], T_cells = "T_Cells")
+  plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], 'Pre-B_cell_CD34-' = "PreB_CD34-")
+  plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], 'Pro-B_cell_CD34+' = "ProB_CD34+")
+
+
+  table(plaqviewobj@meta.data[["SingleR.calls"]])
+
+
+  ## DEPRECATED## #### STEP3B: scCATCH ####
   # Idents(object = plaqviewobj) <- "seurat_clusters"
   # 
   # clu_markers <- findmarkergenes(
@@ -136,7 +136,7 @@ human_process <- function(datasetID){
   # )
   # 
   # 
-  # ## blood vessell ## 
+  # ## blood vessell ##
   # clu_ann_BV <- scCATCH(clu_markers$clu_markers,
   #                       species = "Human",
   #                       cancer = NULL,
@@ -171,15 +171,13 @@ human_process <- function(datasetID){
   # bv_annotations <- replace_na(bv_annotations, "Unknown")
   # plaqviewobj[["scCATCH_Blood"]] <- bv_annotations[match(plaqviewobj@meta.data$seurat_clusters, names(bv_annotations))]
   # 
-  # #### STEP3C: rename manual label####
-  # 
-  # plaqviewobj[["manually_annotated_labels"]] <- plaqviewobj@meta.data[["new_ident"]]
+  #### STEP3B: SYMPHONY ####
   
-  #### STEP3D: SEURAT/TABULA SAPIENS LABELING ####
+  #### STEP3C: SEURAT/TABULA SAPIENS LABELING ####
   #### load tabulus sapiens reference
   # using only the vascular data
   
-    humanatlasref <- LoadH5Seurat(file = "~/Google Drive/UVA/Grad School/Projects/PlaqView/DataProcessing/references/Tabula_sapiens_reference/TS_Vasculature.h5seurat", assays = "RNA")
+  humanatlasref <- LoadH5Seurat(file = "~/Google Drive/UVA/Grad School/Projects/PlaqView/DataProcessing/references/Tabula_sapiens_reference/TS_Vasculature.h5seurat", assays = "RNA")
   
   #### preprocess ref seurat 
   Idents(humanatlasref) <-  humanatlasref@meta.data[["Annotation"]]
@@ -206,7 +204,7 @@ human_process <- function(datasetID){
   # set to active idents
   Idents(plaqviewobj) <- plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]]
   
-  #### STEP3E: recode tabula sapien labels ####
+  #### STEP3D: recode tabula sapien labels ####
   plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <- recode(plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]], 
                                                                    'Smooth Muscle Cell' = "SMCs")
   plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <- recode(plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]], 
@@ -237,6 +235,7 @@ human_process <- function(datasetID){
     theme(plot.title = element_text(hjust =  0.5)) +
     guides(color = guide_legend(nrow = 5))
   
+  #### STEP3E: Author provided should be already as 'Author_Provided"#### 
   #### STEP4: MONOCLE3 TRAJECTORY INFERENCE ----
   # in previous versions we tried the seurat wrapper it just didnt work
   # below we manually wrap the data ourselves
@@ -379,144 +378,144 @@ human_process <- function(datasetID){
   ## first lets do the whole dataset
   # a special gene module score heatmap (for the whole dataset)
   # pr_graph_test_res <- graph_test(plaqviewobj.cds, neighbor_graph="principal_graph", cores=2)
-  write.csv(pr_graph_test_res, file = "moransI_all_clusters.csv")
-  pr_deg_ids <- row.names(subset(pr_graph_test_res, q_value < 0.00000001)) # you can adjust the p-value here
-  head(pr_deg_ids)
-  gene_module_df <- find_gene_modules(plaqviewobj.cds[pr_deg_ids,], resolution=1e-3)
-  cell_group_df <- tibble::tibble(cell=row.names(colData(plaqviewobj.cds)), 
-                                  cell_group=colData(plaqviewobj.cds)$assigned_cell_type)
-  agg_mat <- aggregate_gene_expression(plaqviewobj.cds, gene_module_df, cell_group_df)
-  row.names(agg_mat) <- stringr::str_c("Module ", row.names(agg_mat))
-  pheatmap::pheatmap(agg_mat,
-                     scale="column", clustering_method="ward.D2")
-  
-  # which then can be visualized like so;
-  # this can show you the different gene modules that can are responsible for changes over pseudotime
-  plot_cells(plaqviewobj.cds,
-             genes=gene_module_df %>% filter(module %in% c(2,3,7)), # specify the module you want to examine
-             label_cell_groups=T,
-             show_trajectory_graph=F)
-  
-  subset(gene_module_df, module == 2)
-  
-  ## now lets do the subsets
-  # pr_graph_test_res.sub <- graph_test(plaqviewobj.cds_subset, neighbor_graph="principal_graph", cores=2)
-  pr_deg_ids.sub <- row.names(subset(pr_graph_test_res.sub, q_value < 0.00000001))
-  write.csv(pr_graph_test_res.sub, file = "moransI_subset_cluster.csv")
-  head(pr_deg_ids.sub)
-  
-  # collect the trajectory-variable genes into modules
-  gene_module_df.sub <- find_gene_modules(plaqviewobj.cds_subset[pr_deg_ids.sub,], resolution=1e-3)
-  # visualize these genes
-  # here I am just pulling out genes that have high moran's i and might be helpful in the paper
-  # SELECTED FOR PUBLICATIONS
-  pdf("monocle3_genesoverpseudotime_seuratpartition_extended.pdf", width=7, height=6)
-  plot_cells(plaqviewobj.cds_subset, 
-             genes=c("MYH11", 'IGFBP2',"PPP1R14A","CNN1", "TNFRSF11B",
-                     "C7", "C3",
-                     "SERPINF1",  "FBLN1", 
-                     "CXCL12", "MMP2", 
-                     "FN1"), # this is faceting by the genes that are DE
-             show_trajectory_graph=FALSE, 
-             label_cell_groups=F, cell_size = 1)
-  
-  dev.off()
-  
-  # recluster at higher definition
-  plaqviewobj.cds_subset = cluster_cells(plaqviewobj.cds_subset, resolution=1e-2)
-  
-  pdf("monocle3_RNAvelocitySUBSET_seuratpartition.pdf", width=6, height=6)
-  plot_cells(plaqviewobj.cds_subset, 
-             color_cells_by="cluster",
-             label_groups_by_cluster=F,
-             show_trajectory_graph = T,
-             trajectory_graph_segment_size = 1,
-             label_leaves=F, # this gives a little node label (outcome)
-             label_roots = F,
-             label_branch_points = F,
-             graph_label_size = 1, # size of # in circle
-             group_label_size = 4,
-             cell_size = 1,
-             alpha = 0.5,
-             scale_to_range = T)
-  dev.off()
-  
-  # #### STEP5A: DYNO TRAJECTORY INFERENCES ####
-  # object_counts <- Matrix::t(as(as.matrix(plaqviewobj@assays$RNA@counts), 'sparseMatrix'))
-  # object_expression <- Matrix::t(as(as.matrix(plaqviewobj@assays$RNA@data), 'sparseMatrix'))
-  # object_cellinfo <- plaqviewobj@meta.data[["SingleR.labels"]]
+  # write.csv(pr_graph_test_res, file = "moransI_all_clusters.csv")
+  # pr_deg_ids <- row.names(subset(pr_graph_test_res, q_value < 0.00000001)) # you can adjust the p-value here
+  # head(pr_deg_ids)
+  # gene_module_df <- find_gene_modules(plaqviewobj.cds[pr_deg_ids,], resolution=1e-3)
+  # cell_group_df <- tibble::tibble(cell=row.names(colData(plaqviewobj.cds)), 
+  #                                 cell_group=colData(plaqviewobj.cds)$assigned_cell_type)
+  # agg_mat <- aggregate_gene_expression(plaqviewobj.cds, gene_module_df, cell_group_df)
+  # row.names(agg_mat) <- stringr::str_c("Module ", row.names(agg_mat))
+  # pheatmap::pheatmap(agg_mat,
+  #                    scale="column", clustering_method="ward.D2")
   # 
-  # plaqviewobj.dyno <- wrap_expression(
-  #   counts = object_counts,
-  #   expression = object_expression)
+  # # which then can be visualized like so;
+  # # this can show you the different gene modules that can are responsible for changes over pseudotime
+  # plot_cells(plaqviewobj.cds,
+  #            genes=gene_module_df %>% filter(module %in% c(2,3,7)), # specify the module you want to examine
+  #            label_cell_groups=T,
+  #            show_trajectory_graph=F)
   # 
+  # subset(gene_module_df, module == 2)
   # 
-  # # may need to run this to clear out memory
-  # # rm(list= ls()[!(ls() %in% c('plaqviewobj.dyno','plaqviewobj','object_cellinfo'))])
-  # # gc()
+  # ## now lets do the subsets
+  # # pr_graph_test_res.sub <- graph_test(plaqviewobj.cds_subset, neighbor_graph="principal_graph", cores=2)
+  # pr_deg_ids.sub <- row.names(subset(pr_graph_test_res.sub, q_value < 0.00000001))
+  # write.csv(pr_graph_test_res.sub, file = "moransI_subset_cluster.csv")
+  # head(pr_deg_ids.sub)
   # 
-  # #### STEP5B: SlingShot ####
-  # # make sure to call up docker images
+  # # collect the trajectory-variable genes into modules
+  # gene_module_df.sub <- find_gene_modules(plaqviewobj.cds_subset[pr_deg_ids.sub,], resolution=1e-3)
+  # # visualize these genes
+  # # here I am just pulling out genes that have high moran's i and might be helpful in the paper
+  # # SELECTED FOR PUBLICATIONS
+  # pdf("monocle3_genesoverpseudotime_seuratpartition_extended.pdf", width=7, height=6)
+  # plot_cells(plaqviewobj.cds_subset, 
+  #            genes=c("MYH11", 'IGFBP2',"PPP1R14A","CNN1", "TNFRSF11B",
+  #                    "C7", "C3",
+  #                    "SERPINF1",  "FBLN1", 
+  #                    "CXCL12", "MMP2", 
+  #                    "FN1"), # this is faceting by the genes that are DE
+  #            show_trajectory_graph=FALSE, 
+  #            label_cell_groups=F, cell_size = 1)
   # 
-  # model <- infer_trajectory(plaqviewobj.dyno, "slingshot", verbose = T,
-  #                           cluster_method = 'clara') # THIS IS ADDED TO REDUCE MEM REQ
-  # 
-  # # add dim reduction
-  # model <- model %>% 
-  #   add_dimred(dimred = as.matrix(plaqviewobj@reductions$umap@cell.embeddings),
-  #              expression_source = plaqviewobj.dyno$expression)
-  # 
-  # pdf("dyno_slingshot_full.pdf", width=7, height=6)
-  # slingshot <- plot_dimred(
-  #   model, 
-  #   expression_source = plaqviewobj.dyno$expression,
-  #   grouping = object_cellinfo # basically stanford@meta.data[["SingleR.labels"]]
-  # )
-  # 
-  # saveRDS(slingshot, file = "slingshot.rds")
-  # slingshot
   # dev.off()
   # 
-  # #### STEP5C: scorpius ####
-  # # make sure to call up docker images
+  # # recluster at higher definition
+  # plaqviewobj.cds_subset = cluster_cells(plaqviewobj.cds_subset, resolution=1e-2)
   # 
-  # model <- infer_trajectory(plaqviewobj.dyno, "scorpius", verbose = T,
-  #                           cluster_method = 'clara') # THIS IS ADDED TO REDUCE MEM REQ
-  # 
-  # # add dim reduction
-  # model <- model %>% 
-  #   add_dimred(dimred = as.matrix(plaqviewobj@reductions$umap@cell.embeddings),
-  #              expression_source = plaqviewobj.dyno$expression)
-  # 
-  # pdf("dyno_scorpius_full.pdf", width=7, height=6)
-  # scorpius <- plot_dimred(
-  #   model, 
-  #   expression_source = plaqviewobj.dyno$expression,
-  #   grouping = object_cellinfo # basically plaqviewobj@meta.data[["SingleR.labels"]]
-  # )
-  # 
-  # saveRDS(scorpius, file = "scorpius.rds")
-  # scorpius
+  # pdf("monocle3_RNAvelocitySUBSET_seuratpartition.pdf", width=6, height=6)
+  # plot_cells(plaqviewobj.cds_subset, 
+  #            color_cells_by="cluster",
+  #            label_groups_by_cluster=F,
+  #            show_trajectory_graph = T,
+  #            trajectory_graph_segment_size = 1,
+  #            label_leaves=F, # this gives a little node label (outcome)
+  #            label_roots = F,
+  #            label_branch_points = F,
+  #            graph_label_size = 1, # size of # in circle
+  #            group_label_size = 4,
+  #            cell_size = 1,
+  #            alpha = 0.5,
+  #            scale_to_range = T)
   # dev.off()
-  # 
-  # #### STEP5D: PAGA ####
-  # model <- infer_trajectory(plaqviewobj.dyno, "projected_paga", verbose = T,
-  #                           cluster_method = 'clara') # THIS IS ADDED TO REDUCE MEM REQ
-  # 
-  # #### PAGA: project the model ###
-  # # add dim reduction
-  # model <- model %>% 
-  #   add_dimred(dimred = as.matrix(plaqviewobj@reductions$umap@cell.embeddings),
-  #              expression_source = plaqviewobj.dyno$expression)
-  # 
-  # paga <- plot_dimred(
-  #   model, 
-  #   expression_source = plaqviewobj.dyno$expression, 
-  #   grouping = object_cellinfo # basically stanford@meta.data[["SingleR.labels"]]
-  # )
-  # paga
-  # saveRDS(paga, file = "paga.rds")
-  # 
+  
+  #### STEP5A: DYNO TRAJECTORY INFERENCES ####
+  object_counts <- Matrix::t(as(as.matrix(plaqviewobj@assays$RNA@counts), 'sparseMatrix'))
+  object_expression <- Matrix::t(as(as.matrix(plaqviewobj@assays$RNA@data), 'sparseMatrix'))
+  object_cellinfo <- plaqviewobj@meta.data[["SingleR.labels"]]
+
+  plaqviewobj.dyno <- wrap_expression(
+    counts = object_counts,
+    expression = object_expression)
+
+
+  # may need to run this to clear out memory
+  # rm(list= ls()[!(ls() %in% c('plaqviewobj.dyno','plaqviewobj','object_cellinfo'))])
+  # gc()
+
+  #### STEP5B: SlingShot ####
+  # make sure to call up docker images
+
+  model <- infer_trajectory(plaqviewobj.dyno, "slingshot", verbose = T,
+                            cluster_method = 'clara') # THIS IS ADDED TO REDUCE MEM REQ
+
+  # add dim reduction
+  model <- model %>%
+    add_dimred(dimred = as.matrix(plaqviewobj@reductions$umap@cell.embeddings),
+               expression_source = plaqviewobj.dyno$expression)
+
+  pdf("dyno_slingshot_full.pdf", width=7, height=6)
+  slingshot <- plot_dimred(
+    model,
+    expression_source = plaqviewobj.dyno$expression,
+    grouping = object_cellinfo # basically stanford@meta.data[["SingleR.labels"]]
+  )
+
+  saveRDS(slingshot, file = "slingshot.rds")
+  slingshot
+  dev.off()
+
+  #### STEP5C: scorpius ####
+  # make sure to call up docker images
+
+  model <- infer_trajectory(plaqviewobj.dyno, "scorpius", verbose = T,
+                            cluster_method = 'clara') # THIS IS ADDED TO REDUCE MEM REQ
+
+  # add dim reduction
+  model <- model %>%
+    add_dimred(dimred = as.matrix(plaqviewobj@reductions$umap@cell.embeddings),
+               expression_source = plaqviewobj.dyno$expression)
+
+  pdf("dyno_scorpius_full.pdf", width=7, height=6)
+  scorpius <- plot_dimred(
+    model,
+    expression_source = plaqviewobj.dyno$expression,
+    grouping = object_cellinfo # basically plaqviewobj@meta.data[["SingleR.labels"]]
+  )
+
+  saveRDS(scorpius, file = "scorpius.rds")
+  scorpius
+  dev.off()
+
+  #### STEP5D: PAGA ####
+  model <- infer_trajectory(plaqviewobj.dyno, "projected_paga", verbose = T,
+                            cluster_method = 'clara') # THIS IS ADDED TO REDUCE MEM REQ
+
+  #### PAGA: project the model ###
+  # add dim reduction
+  model <- model %>%
+    add_dimred(dimred = as.matrix(plaqviewobj@reductions$umap@cell.embeddings),
+               expression_source = plaqviewobj.dyno$expression)
+
+  paga <- plot_dimred(
+    model,
+    expression_source = plaqviewobj.dyno$expression,
+    grouping = object_cellinfo # basically stanford@meta.data[["SingleR.labels"]]
+  )
+  paga
+  saveRDS(paga, file = "paga.rds")
+
   #### Clean-Up Metadata ####
   # show all metadata columns
   names(plaqviewobj@meta.data)
@@ -567,6 +566,11 @@ human_process <- function(datasetID){
   
   
   #### STEP8: CLEAN UP RAM
+  #### STEP8: PRINT CELL COUNT ####
+  print(summary(plaqviewobj$SingleR.labels))
+  print(summary(as.factor(plaqviewobj$SingleR.labels)))
+  print(dim(plaqviewobj@assays$RNA))
+  gc()
 }
 #### Function for Mouse Data ####
 mouse_process <- function(datasetID){
@@ -1094,7 +1098,9 @@ mouse_process <- function(datasetID){
   
 }
 #### Apply Functions for Human Sets ####
-lapply(humanIDs, human_process)
+# lapply(humanIDs, human_process)
+
+human_process(datasetID = "Alencar_2020")
 
 #### Apply Functions for Mouse Sets ####
 # tapply: Apply a function to subsets of a vector X and defined the subset by vector Y.
