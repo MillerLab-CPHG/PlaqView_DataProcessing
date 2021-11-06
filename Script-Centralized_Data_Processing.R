@@ -360,19 +360,25 @@ human_process <- function(datasetID){
   
   
   #### STEP5A: DYNO TRAJECTORY INFERENCES ####
-  object_counts <- Matrix::t(as(as.matrix(plaqviewobj@assays$RNA@counts), 'sparseMatrix'))
-  object_expression <- Matrix::t(as(as.matrix(plaqviewobj@assays$RNA@data), 'sparseMatrix'))
+  object_counts <- Matrix::t(Matrix(plaqviewobj@assays$RNA@counts, sparse = T))
+  object_expression <- Matrix::t(Matrix(plaqviewobj@assays$RNA@data, sparse = T))
   object_cellinfo <- plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]]
-
+  
   plaqviewobj.dyno <- wrap_expression(
     counts = object_counts,
     expression = object_expression)
-
-
+  
+  
   # may need to run this to clear out memory
   # rm(list= ls()[!(ls() %in% c('plaqviewobj.dyno','plaqviewobj','object_cellinfo'))])
   # gc()
-
+  
+  
+  
+  # may need to run this to clear out memory
+  # rm(list= ls()[!(ls() %in% c('plaqviewobj.dyno','plaqviewobj','object_cellinfo'))])
+  # gc()
+  
   #### STEP5B: SlingShot ####
   # make sure to call up docker images
 
@@ -384,7 +390,7 @@ human_process <- function(datasetID){
     add_dimred(dimred = as.matrix(plaqviewobj@reductions$umap@cell.embeddings),
                expression_source = plaqviewobj.dyno$expression)
 
-  pdf("dyno_slingshot_full.pdf", width=7, height=6)
+  pdf("../dyno_slingshot_full.pdf", width=7, height=6)
   slingshot <- plot_dimred(
     model,
     expression_source = plaqviewobj.dyno$expression,
@@ -406,7 +412,7 @@ human_process <- function(datasetID){
     add_dimred(dimred = as.matrix(plaqviewobj@reductions$umap@cell.embeddings),
                expression_source = plaqviewobj.dyno$expression)
 
-  pdf("dyno_scorpius_full.pdf", width=7, height=6)
+  pdf("../dyno_scorpius_full.pdf", width=7, height=6)
   scorpius <- plot_dimred(
     model,
     expression_source = plaqviewobj.dyno$expression,
@@ -426,7 +432,8 @@ human_process <- function(datasetID){
   model <- model %>%
     add_dimred(dimred = as.matrix(plaqviewobj@reductions$umap@cell.embeddings),
                expression_source = plaqviewobj.dyno$expression)
-
+  
+  pdf("../dyno_paga_full.pdf", width=7, height=6)
   paga <- plot_dimred(
     model,
     expression_source = plaqviewobj.dyno$expression,
@@ -434,7 +441,8 @@ human_process <- function(datasetID){
   )
   paga
   saveRDS(paga, file = "../paga.rds")
-
+  dev.off()
+  
   #### Clean-Up Metadata ####
   # show all metadata columns
   names(plaqviewobj@meta.data)
@@ -447,9 +455,6 @@ human_process <- function(datasetID){
     plaqviewobj@meta.data[, which(colnames(plaqviewobj@meta.data)
                                   %in% c(
                                     "Seurat_Clusters",
-                                    "scCATCH_Blood",
-                                    "scCATCH_BV",
-                                    "scCATCH_Heart",
                                     "Author_Provided",
                                     "SingleR.calls",
                                     "Seurat_with_Tabula_Ref"  
