@@ -1,17 +1,26 @@
+#### IMPORTANT: SET TO RESPECTIVE DIRECTORY in FUNCTIONS ####
 #### Library and data loading ----
 library(Seurat)
 library(patchwork)
 library(readr)
-library(scCATCH)
+# library(scCATCH)
 library(SingleR)
 library(tidyverse)
 library(monocle3)
 library(SeuratData)
 library(magrittr)
 library(ggrepel)
-library(dyno)
+library(dyno) # devtools::install_github("dynverse/dyno")
 library(readxl)
 library(SeuratDisk)
+library(celldex) # BiocManager::install("celldex")
+
+library(symphony)
+library(tidyverse)
+library(data.table)
+library(matrixStats)
+library(Matrix)
+library(bayNorm) # for transposition of sparase matrix
 
 original_color_list <-
   {c("rosybrown2",
@@ -38,20 +47,12 @@ color_function <- colorRampPalette(original_color_list)
 manual_color_list <- color_function(40) # change this if clusters >40
 
 
-#### Read Current Available Data Sets ####
-# this needs to point to the set spreadsheet
-all.data <- 
-  read_excel("data/Available_datasets.xlsx")
-
-#### Pull Out Human and Mouse Data IDs ####
-humanIDs <- all.data$DataID[all.data$Species == "Human"]
-mouseIDs <- all.data$DataID[all.data$Species == "Mouse"]
-
 #### Function for Human Data ####
 human_process <- function(datasetID){
   #### STEP1: READ DATASET DIRECTORY ####
   # you must change this if your source is different
-  path.to.destination <- file.path(paste("/Users/wm5wt/Google Drive/UVA/Grad School/Projects/PlaqView/DataProcessing/data/",
+  # get this to the dataprocessing - data folder in the first piece
+  path.to.destination <- file.path(paste("~/wm5wt@virginia.edu - Google Drive/My Drive/UVA/Grad School/Projects/PlaqView/DataProcessing/data/",
                                          datasetID, "/source_files", sep=""))
   
   setwd(path.to.destination) 
@@ -59,22 +60,26 @@ human_process <- function(datasetID){
   plaqviewobj <- readRDS(file = "UNPROCESSED.rds")
   plaqviewobj <- UpdateSeuratObject(plaqviewobj)
   
+  #### STEP1B: READ REFERENCE ####
+  humanatlasref <- LoadH5Seurat(file = "~/wm5wt@virginia.edu - Google Drive/My Drive/UVA/Grad School/Projects/PlaqView/DataProcessing/references/Tabula_sapiens_reference/TS_Vasculature.h5seurat", assays = "RNA")
+  
   #### STEP2: SEURAT PROCESS ####
   # Run the standard workflow for visualization and clustering
-  plaqviewobj <- ScaleData(plaqviewobj, verbose = FALSE)
-  plaqviewobj <- FindVariableFeatures(plaqviewobj, verbose = T)
+  plaqviewobj <- NormalizeData(plaqviewobj, normalization.method = "LogNormalize", scale.factor = 10000)
+  plaqviewobj <- FindVariableFeatures(plaqviewobj, verbose = T, nfeatures = 2000)
+  plaqviewobj <- ScaleData(plaqviewobj, verbose = T)
   
   plaqviewobj <- RunPCA(plaqviewobj, npcs = 30, verbose = FALSE)
-  plaqviewobj <- RunUMAP(plaqviewobj, reduction = "pca", dims = 1:30)
-  plaqviewobj <- FindNeighbors(plaqviewobj, reduction = "pca", dims = 1:30)
+  plaqviewobj <- RunUMAP(plaqviewobj, reduction = "pca", dims = 1:20)
+  plaqviewobj <- FindNeighbors(plaqviewobj, reduction = "pca", dims = 1:20)
   plaqviewobj <- FindClusters(plaqviewobj, resolution = 0.5)
   
   #### STEP3: SINGLER ----
   # BiocManager::install("SingleR")
   # here we are using Human Primary Cell Atlas design for blood
   # https://bioconductor.org/packages/3.12/data/experiment/vignettes/celldex/inst/doc/userguide.html#2_General-purpose_references
-  hpca.se <- celldex::HumanPrimaryCellAtlasData() # build the reference
-  hpca.se
+  hpca.se <- HumanPrimaryCellAtlasData()
+  
 
   # now run the prediction using the reference
   # singleR requires that it be in a 'singlecellexperiment' format
@@ -171,14 +176,15 @@ human_process <- function(datasetID){
   # bv_annotations <- replace_na(bv_annotations, "Unknown")
   # plaqviewobj[["scCATCH_Blood"]] <- bv_annotations[match(plaqviewobj@meta.data$seurat_clusters, names(bv_annotations))]
   # 
-  #### STEP3B: SYMPHONY ####
-  
+  # #### STEP3B: SYMPHONY ####
+  # ref_pbmcs = readRDS('references/Symphony_ref_data/fibroblast_atlas.rds')
+  # 
+  # query = symphony::mapQuery(plaqviewobj@assays$RNA, plaqviewobj@meta.data, ref_pbmcs, 
+  #                  vars = plaqviewobj@meta.data, 
+  #                  do_normalize = TRUE)
+  # 
   #### STEP3C: SEURAT/TABULA SAPIENS LABELING ####
-  #### load tabulus sapiens reference
-  # using only the vascular data
-  
-  humanatlasref <- LoadH5Seurat(file = "~/Google Drive/UVA/Grad School/Projects/PlaqView/DataProcessing/references/Tabula_sapiens_reference/TS_Vasculature.h5seurat", assays = "RNA")
-  
+
   #### preprocess ref seurat 
   Idents(humanatlasref) <-  humanatlasref@meta.data[["Annotation"]]
   
@@ -196,28 +202,28 @@ human_process <- function(datasetID){
   plaqviewobj <- AddMetaData(plaqviewobj, metadata = predictions)
   
   #### rename transferred column metadata 
-  plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <- plaqviewobj@meta.data[["predicted.id"]]
+  plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]] <- plaqviewobj@meta.data[["predicted.id"]]
   
   # capitalize the lettering
-  plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <-str_to_title(plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]], locale = "en")
+  plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]] <-str_to_title(plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]], locale = "en")
   
   # set to active idents
-  Idents(plaqviewobj) <- plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]]
+  Idents(plaqviewobj) <- plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]]
   
-  #### STEP3D: recode tabula sapien labels ####
-  plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <- recode(plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]], 
+  #### STEP3D: RECODE SEURAT/TABULA SAPIENS ####
+  plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]] <- recode(plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]], 
                                                                    'Smooth Muscle Cell' = "SMCs")
-  plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <- recode(plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]], 
+  plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]] <- recode(plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]], 
                                                                    'Pancreatic Acinar Cell' = "Panc Acinar Cell")
-  plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <- recode(plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]], 
+  plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]] <- recode(plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]], 
                                                                    'Fibroblast' = "FB")
-  plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <- recode(plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]], 
+  plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]] <- recode(plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]], 
                                                                    'Endothelial Cell' = "EC")
-  plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <- recode(plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]], 
+  plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]] <- recode(plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]], 
                                                                    'Macrophage' = "Mø")
-  plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] <- recode(plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]], 
+  plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]] <- recode(plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]], 
                                                                    'Natural Killer Cell' = "NK")
-  Idents(plaqviewobj) <- plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]]
+  Idents(plaqviewobj) <- plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]]
   
   #### plot the cells 
   DimPlot(
@@ -235,7 +241,7 @@ human_process <- function(datasetID){
     theme(plot.title = element_text(hjust =  0.5)) +
     guides(color = guide_legend(nrow = 5))
   
-  #### STEP3E: Author provided should be already as 'Author_Provided"#### 
+  #### STEP3E: RESERVED SPACE #### 
   #### STEP4: MONOCLE3 TRAJECTORY INFERENCE ----
   # in previous versions we tried the seurat wrapper it just didnt work
   # below we manually wrap the data ourselves
@@ -274,7 +280,7 @@ human_process <- function(datasetID){
   
   ## transfer singleR labels to moncle3 object
   colData(plaqviewobj.cds)$assigned_cell_type <- 
-    plaqviewobj@meta.data[["predicted.id_tabulus.sapien"]] # call this by opening the object
+    plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]] # call this by opening the object
   
   #### MONOCLE3 CONT. ---
   # now learn the PATH (trajectory)
@@ -335,7 +341,7 @@ human_process <- function(datasetID){
                      scale_to_range = T) +
     scale_color_manual(values = manual_color_list) # sync color scheme
   
-  saveRDS(mon3, file = "monocle3.rds")
+  saveRDS(mon3, file = "../monocle3.rds")
   # now you can show pseudotime
   pdf("monocle3_pseudotime_seuratpartition.pdf", width=7, height=6)
   plot_cells(plaqviewobj.cds,
@@ -353,97 +359,10 @@ human_process <- function(datasetID){
   dev.off()
   
   
-  # #### STEP4B: (NOT RUN) Subset Trajectory & analysis of SMC----
-  # plaqviewobj.cds_subset <- choose_cells(plaqviewobj.cds) # calls up shiny app
-  # 
-  # plot_cells(plaqviewobj.cds_subset,
-  #            color_cells_by = "pseudotime",
-  #            show_trajectory_graph = T,
-  #            trajectory_graph_segment_size = 1,
-  #            label_leaves=F, # this gives a little node label (outcome)
-  #            label_roots = T,
-  #            label_branch_points = F,
-  #            graph_label_size = 1, # size of # in circle
-  #            group_label_size = 3,
-  #            cell_size = 1,
-  #            alpha = 0.7,
-  #            scale_to_range = T) 
-  # 
-  # #### STEP4C: (NOT RUN) MORAN's I Test of Autocorrelation ####
-  # now we can extrapolate genes that are differentially expressed in this region
-  # Moran’s I is a measure of multi-directional and multi-dimensional spatial autocorrelation. 
-  # the statistic tells you whether cells at nearby positions on a 
-  # trajectory will have similar (or dissimilar) +
-  # expression levels for the gene being tested.
-  ## first lets do the whole dataset
-  # a special gene module score heatmap (for the whole dataset)
-  # pr_graph_test_res <- graph_test(plaqviewobj.cds, neighbor_graph="principal_graph", cores=2)
-  # write.csv(pr_graph_test_res, file = "moransI_all_clusters.csv")
-  # pr_deg_ids <- row.names(subset(pr_graph_test_res, q_value < 0.00000001)) # you can adjust the p-value here
-  # head(pr_deg_ids)
-  # gene_module_df <- find_gene_modules(plaqviewobj.cds[pr_deg_ids,], resolution=1e-3)
-  # cell_group_df <- tibble::tibble(cell=row.names(colData(plaqviewobj.cds)), 
-  #                                 cell_group=colData(plaqviewobj.cds)$assigned_cell_type)
-  # agg_mat <- aggregate_gene_expression(plaqviewobj.cds, gene_module_df, cell_group_df)
-  # row.names(agg_mat) <- stringr::str_c("Module ", row.names(agg_mat))
-  # pheatmap::pheatmap(agg_mat,
-  #                    scale="column", clustering_method="ward.D2")
-  # 
-  # # which then can be visualized like so;
-  # # this can show you the different gene modules that can are responsible for changes over pseudotime
-  # plot_cells(plaqviewobj.cds,
-  #            genes=gene_module_df %>% filter(module %in% c(2,3,7)), # specify the module you want to examine
-  #            label_cell_groups=T,
-  #            show_trajectory_graph=F)
-  # 
-  # subset(gene_module_df, module == 2)
-  # 
-  # ## now lets do the subsets
-  # # pr_graph_test_res.sub <- graph_test(plaqviewobj.cds_subset, neighbor_graph="principal_graph", cores=2)
-  # pr_deg_ids.sub <- row.names(subset(pr_graph_test_res.sub, q_value < 0.00000001))
-  # write.csv(pr_graph_test_res.sub, file = "moransI_subset_cluster.csv")
-  # head(pr_deg_ids.sub)
-  # 
-  # # collect the trajectory-variable genes into modules
-  # gene_module_df.sub <- find_gene_modules(plaqviewobj.cds_subset[pr_deg_ids.sub,], resolution=1e-3)
-  # # visualize these genes
-  # # here I am just pulling out genes that have high moran's i and might be helpful in the paper
-  # # SELECTED FOR PUBLICATIONS
-  # pdf("monocle3_genesoverpseudotime_seuratpartition_extended.pdf", width=7, height=6)
-  # plot_cells(plaqviewobj.cds_subset, 
-  #            genes=c("MYH11", 'IGFBP2',"PPP1R14A","CNN1", "TNFRSF11B",
-  #                    "C7", "C3",
-  #                    "SERPINF1",  "FBLN1", 
-  #                    "CXCL12", "MMP2", 
-  #                    "FN1"), # this is faceting by the genes that are DE
-  #            show_trajectory_graph=FALSE, 
-  #            label_cell_groups=F, cell_size = 1)
-  # 
-  # dev.off()
-  # 
-  # # recluster at higher definition
-  # plaqviewobj.cds_subset = cluster_cells(plaqviewobj.cds_subset, resolution=1e-2)
-  # 
-  # pdf("monocle3_RNAvelocitySUBSET_seuratpartition.pdf", width=6, height=6)
-  # plot_cells(plaqviewobj.cds_subset, 
-  #            color_cells_by="cluster",
-  #            label_groups_by_cluster=F,
-  #            show_trajectory_graph = T,
-  #            trajectory_graph_segment_size = 1,
-  #            label_leaves=F, # this gives a little node label (outcome)
-  #            label_roots = F,
-  #            label_branch_points = F,
-  #            graph_label_size = 1, # size of # in circle
-  #            group_label_size = 4,
-  #            cell_size = 1,
-  #            alpha = 0.5,
-  #            scale_to_range = T)
-  # dev.off()
-  
   #### STEP5A: DYNO TRAJECTORY INFERENCES ####
   object_counts <- Matrix::t(as(as.matrix(plaqviewobj@assays$RNA@counts), 'sparseMatrix'))
   object_expression <- Matrix::t(as(as.matrix(plaqviewobj@assays$RNA@data), 'sparseMatrix'))
-  object_cellinfo <- plaqviewobj@meta.data[["SingleR.labels"]]
+  object_cellinfo <- plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]]
 
   plaqviewobj.dyno <- wrap_expression(
     counts = object_counts,
@@ -469,10 +388,10 @@ human_process <- function(datasetID){
   slingshot <- plot_dimred(
     model,
     expression_source = plaqviewobj.dyno$expression,
-    grouping = object_cellinfo # basically stanford@meta.data[["SingleR.labels"]]
+    grouping = object_cellinfo # basically stanford@meta.data[["SingleR.calls"]]
   )
 
-  saveRDS(slingshot, file = "slingshot.rds")
+  saveRDS(slingshot, file = "../slingshot.rds")
   slingshot
   dev.off()
 
@@ -491,10 +410,10 @@ human_process <- function(datasetID){
   scorpius <- plot_dimred(
     model,
     expression_source = plaqviewobj.dyno$expression,
-    grouping = object_cellinfo # basically plaqviewobj@meta.data[["SingleR.labels"]]
+    grouping = object_cellinfo # basically plaqviewobj@meta.data[["SingleR.calls"]]
   )
 
-  saveRDS(scorpius, file = "scorpius.rds")
+  saveRDS(scorpius, file = "../scorpius.rds")
   scorpius
   dev.off()
 
@@ -511,20 +430,18 @@ human_process <- function(datasetID){
   paga <- plot_dimred(
     model,
     expression_source = plaqviewobj.dyno$expression,
-    grouping = object_cellinfo # basically stanford@meta.data[["SingleR.labels"]]
+    grouping = object_cellinfo # basically stanford@meta.data[["SingleR.calls"]]
   )
   paga
-  saveRDS(paga, file = "paga.rds")
+  saveRDS(paga, file = "../paga.rds")
 
   #### Clean-Up Metadata ####
   # show all metadata columns
   names(plaqviewobj@meta.data)
   
-  # last chance to rename any 
+  # rename number clusters  
   plaqviewobj@meta.data$Seurat_Clusters <- plaqviewobj@meta.data$seurat_clusters
-  plaqviewobj@meta.data$Author_Provided <- plaqviewobj@meta.data$manually_annotated_labels
-  plaqviewobj@meta.data$Seurat_with_Tabula_Ref <- plaqviewobj@meta.data$predicted.id_Tabula
-  
+
   # choose which ones to keep for display
   plaqviewobj@meta.data <- 
     plaqviewobj@meta.data[, which(colnames(plaqviewobj@meta.data)
@@ -540,37 +457,41 @@ human_process <- function(datasetID){
   #### STEP6: REDUCE SIZE & OUTPUT ####
   plaqviewobj <- DietSeurat(plaqviewobj, counts = T, data = T, dimreducs = c('umap'))
   
-  saveRDS(plaqviewobj, file = "PROCESSED_MUST_RENAME.rds")
-  # saveRDS(plaqviewobj.cds, file = "Pan_2020_05152021_CDS.rds")
+  final.file.name <- file.path(paste("../", datasetID, ".rds", sep="")) # ../ moves up one level in file
   
-  plaqviewobj <- readRDS(file = "PROCESSED_MUST_RENAME.rds")
+  saveRDS(plaqviewobj, file = final.file.name)
+  
+  plaqviewobj <- readRDS(file = final.file.name)
   
   #### STEP7: DIFF EX GENE LIST ####
   Idents(object = plaqviewobj) <- "SingleR.calls"
   difflist <- Seurat::FindAllMarkers(plaqviewobj)
-  write_csv(difflist, file = "diff_by_singleR.csv")
+  write_csv(difflist, file = "../diff_by_singleR.csv")
   
   Idents(object = plaqviewobj) <- "Author_Provided"
   difflist <- Seurat::FindAllMarkers(plaqviewobj)
-  write_csv(difflist, file = "diff_by_author.csv")
+  write_csv(difflist, file = "../diff_by_author.csv")
   
   Idents(object = plaqviewobj) <- "Seurat_Clusters"
   difflist <- Seurat::FindAllMarkers(plaqviewobj)
-  write_csv(difflist, file = "diff_by_seurat.csv")
+  write_csv(difflist, file = "../diff_by_seurat.csv")
   
   Idents(object = plaqviewobj) <- "Seurat_with_Tabula_Ref"
   difflist <- Seurat::FindAllMarkers(plaqviewobj)
-  write_csv(difflist, file = "diff_by_predicted.id_tabulus.sapien.csv")
+  write_csv(difflist, file = "../diff_by_Seurat_with_Tabula_Ref.csv")
   
+
   
+  #### STEP8: PRINT CELL COUNT, RAM gc ####
   
+  n <- summary(plaqviewobj$SingleR.calls)[1]
+  tab <- summary(as.factor(plaqviewobj$SingleR.calls))
   
-  #### STEP8: CLEAN UP RAM
-  #### STEP8: PRINT CELL COUNT ####
-  print(summary(plaqviewobj$SingleR.labels))
-  print(summary(as.factor(plaqviewobj$SingleR.labels)))
-  print(dim(plaqviewobj@assays$RNA))
+  write.csv(tab, file = paste(n, "_cell_count.csv"))
+  
   gc()
+
+  
 }
 #### Function for Mouse Data ####
 mouse_process <- function(datasetID){
@@ -859,7 +780,7 @@ mouse_process <- function(datasetID){
                      scale_to_range = T) +
     scale_color_manual(values = manual_color_list) # sync color scheme
   
-  saveRDS(mon3, file = "monocle3.rds")
+  saveRDS(mon3, file = "../monocle3.rds")
   # now you can show pseudotime
   pdf("monocle3_pseudotime_seuratpartition.pdf", width=7, height=6)
   plot_cells(plaqviewobj.cds,
@@ -893,77 +814,77 @@ mouse_process <- function(datasetID){
   #            alpha = 0.7,
   #            scale_to_range = T)
   #
-  # #### STEP4C: (NOT RUN) MORAN's I Test of Autocorrelation ####
-  # now we can extrapolate genes that are differentially expressed in this region
-  # Moran’s I is a measure of multi-directional and multi-dimensional spatial autocorrelation.
-  # the statistic tells you whether cells at nearby positions on a
-  # trajectory will have similar (or dissimilar) +
-  # expression levels for the gene being tested.
-  ## first lets do the whole dataset
-  # a special gene module score heatmap (for the whole dataset)
-  # pr_graph_test_res <- graph_test(plaqviewobj.cds, neighbor_graph="principal_graph", cores=2)
-  write.csv(pr_graph_test_res, file = "moransI_all_clusters.csv")
-  pr_deg_ids <- row.names(subset(pr_graph_test_res, q_value < 0.00000001)) # you can adjust the p-value here
-  head(pr_deg_ids)
-  gene_module_df <- find_gene_modules(plaqviewobj.cds[pr_deg_ids,], resolution=1e-3)
-  cell_group_df <- tibble::tibble(cell=row.names(colData(plaqviewobj.cds)),
-                                  cell_group=colData(plaqviewobj.cds)$assigned_cell_type)
-  agg_mat <- aggregate_gene_expression(plaqviewobj.cds, gene_module_df, cell_group_df)
-  row.names(agg_mat) <- stringr::str_c("Module ", row.names(agg_mat))
-  pheatmap::pheatmap(agg_mat,
-                     scale="column", clustering_method="ward.D2")
-  
-  # which then can be visualized like so;
-  # this can show you the different gene modules that can are responsible for changes over pseudotime
-  plot_cells(plaqviewobj.cds,
-             genes=gene_module_df %>% filter(module %in% c(2,3,7)), # specify the module you want to examine
-             label_cell_groups=T,
-             show_trajectory_graph=F)
-  
-  subset(gene_module_df, module == 2)
-  
-  ## now lets do the subsets
-  # pr_graph_test_res.sub <- graph_test(plaqviewobj.cds_subset, neighbor_graph="principal_graph", cores=2)
-  pr_deg_ids.sub <- row.names(subset(pr_graph_test_res.sub, q_value < 0.00000001))
-  write.csv(pr_graph_test_res.sub, file = "moransI_subset_cluster.csv")
-  head(pr_deg_ids.sub)
-  
-  # collect the trajectory-variable genes into modules
-  gene_module_df.sub <- find_gene_modules(plaqviewobj.cds_subset[pr_deg_ids.sub,], resolution=1e-3)
-  # visualize these genes
-  # here I am just pulling out genes that have high moran's i and might be helpful in the paper
-  # SELECTED FOR PUBLICATIONS
-  pdf("monocle3_genesoverpseudotime_seuratpartition_extended.pdf", width=7, height=6)
-  plot_cells(plaqviewobj.cds_subset,
-             genes=c("MYH11", 'IGFBP2',"PPP1R14A","CNN1", "TNFRSF11B",
-                     "C7", "C3",
-                     "SERPINF1",  "FBLN1",
-                     "CXCL12", "MMP2",
-                     "FN1"), # this is faceting by the genes that are DE
-             show_trajectory_graph=FALSE,
-             label_cell_groups=F, cell_size = 1)
-  
-  dev.off()
-  
-  # recluster at higher definition
-  plaqviewobj.cds_subset = cluster_cells(plaqviewobj.cds_subset, resolution=1e-2)
-  
-  pdf("monocle3_RNAvelocitySUBSET_seuratpartition.pdf", width=6, height=6)
-  plot_cells(plaqviewobj.cds_subset,
-             color_cells_by="cluster",
-             label_groups_by_cluster=F,
-             show_trajectory_graph = T,
-             trajectory_graph_segment_size = 1,
-             label_leaves=F, # this gives a little node label (outcome)
-             label_roots = F,
-             label_branch_points = F,
-             graph_label_size = 1, # size of # in circle
-             group_label_size = 4,
-             cell_size = 1,
-             alpha = 0.5,
-             scale_to_range = T)
-  dev.off()
-  
+  # # #### STEP4C: (NOT RUN) MORAN's I Test of Autocorrelation ####
+  # # now we can extrapolate genes that are differentially expressed in this region
+  # # Moran’s I is a measure of multi-directional and multi-dimensional spatial autocorrelation.
+  # # the statistic tells you whether cells at nearby positions on a
+  # # trajectory will have similar (or dissimilar) +
+  # # expression levels for the gene being tested.
+  # ## first lets do the whole dataset
+  # # a special gene module score heatmap (for the whole dataset)
+  # # pr_graph_test_res <- graph_test(plaqviewobj.cds, neighbor_graph="principal_graph", cores=2)
+  # write.csv(pr_graph_test_res, file = "../moransI_all_clusters.csv")
+  # pr_deg_ids <- row.names(subset(pr_graph_test_res, q_value < 0.00000001)) # you can adjust the p-value here
+  # head(pr_deg_ids)
+  # gene_module_df <- find_gene_modules(plaqviewobj.cds[pr_deg_ids,], resolution=1e-3)
+  # cell_group_df <- tibble::tibble(cell=row.names(colData(plaqviewobj.cds)),
+  #                                 cell_group=colData(plaqviewobj.cds)$assigned_cell_type)
+  # agg_mat <- aggregate_gene_expression(plaqviewobj.cds, gene_module_df, cell_group_df)
+  # row.names(agg_mat) <- stringr::str_c("Module ", row.names(agg_mat))
+  # pheatmap::pheatmap(agg_mat,
+  #                    scale="column", clustering_method="ward.D2")
+  # 
+  # # which then can be visualized like so;
+  # # this can show you the different gene modules that can are responsible for changes over pseudotime
+  # plot_cells(plaqviewobj.cds,
+  #            genes=gene_module_df %>% filter(module %in% c(2,3,7)), # specify the module you want to examine
+  #            label_cell_groups=T,
+  #            show_trajectory_graph=F)
+  # 
+  # subset(gene_module_df, module == 2)
+  # 
+  # ## now lets do the subsets
+  # # pr_graph_test_res.sub <- graph_test(plaqviewobj.cds_subset, neighbor_graph="principal_graph", cores=2)
+  # pr_deg_ids.sub <- row.names(subset(pr_graph_test_res.sub, q_value < 0.00000001))
+  # write.csv(pr_graph_test_res.sub, file = "moransI_subset_cluster.csv")
+  # head(pr_deg_ids.sub)
+  # 
+  # # collect the trajectory-variable genes into modules
+  # gene_module_df.sub <- find_gene_modules(plaqviewobj.cds_subset[pr_deg_ids.sub,], resolution=1e-3)
+  # # visualize these genes
+  # # here I am just pulling out genes that have high moran's i and might be helpful in the paper
+  # # SELECTED FOR PUBLICATIONS
+  # pdf("monocle3_genesoverpseudotime_seuratpartition_extended.pdf", width=7, height=6)
+  # plot_cells(plaqviewobj.cds_subset,
+  #            genes=c("MYH11", 'IGFBP2',"PPP1R14A","CNN1", "TNFRSF11B",
+  #                    "C7", "C3",
+  #                    "SERPINF1",  "FBLN1",
+  #                    "CXCL12", "MMP2",
+  #                    "FN1"), # this is faceting by the genes that are DE
+  #            show_trajectory_graph=FALSE,
+  #            label_cell_groups=F, cell_size = 1)
+  # 
+  # dev.off()
+  # 
+  # # recluster at higher definition
+  # plaqviewobj.cds_subset = cluster_cells(plaqviewobj.cds_subset, resolution=1e-2)
+  # 
+  # pdf("monocle3_RNAvelocitySUBSET_seuratpartition.pdf", width=6, height=6)
+  # plot_cells(plaqviewobj.cds_subset,
+  #            color_cells_by="cluster",
+  #            label_groups_by_cluster=F,
+  #            show_trajectory_graph = T,
+  #            trajectory_graph_segment_size = 1,
+  #            label_leaves=F, # this gives a little node label (outcome)
+  #            label_roots = F,
+  #            label_branch_points = F,
+  #            graph_label_size = 1, # size of # in circle
+  #            group_label_size = 4,
+  #            cell_size = 1,
+  #            alpha = 0.5,
+  #            scale_to_range = T)
+  # dev.off()
+  # 
   #### STEP5A: DYNO TRAJECTORY INFERENCES ####
   object_counts <- Matrix::t(as(as.matrix(plaqviewobj@assays$RNA@counts), 'sparseMatrix'))
   object_expression <- Matrix::t(as(as.matrix(plaqviewobj@assays$RNA@data), 'sparseMatrix'))
@@ -996,7 +917,7 @@ mouse_process <- function(datasetID){
     grouping = object_cellinfo # basically stanford@meta.data[["SingleR.labels"]]
   )
   
-  saveRDS(slingshot, file = "slingshot.rds")
+  saveRDS(slingshot, file = "../slingshot.rds")
   slingshot
   dev.off()
   
@@ -1018,7 +939,7 @@ mouse_process <- function(datasetID){
     grouping = object_cellinfo # basically plaqviewobj@meta.data[["SingleR.labels"]]
   )
   
-  saveRDS(scorpius, file = "scorpius.rds")
+  saveRDS(scorpius, file = "../scorpius.rds")
   scorpius
   dev.off()
   
@@ -1038,7 +959,7 @@ mouse_process <- function(datasetID){
     grouping = object_cellinfo # basically stanford@meta.data[["SingleR.labels"]]
   )
   paga
-  saveRDS(paga, file = "paga.rds")
+  saveRDS(paga, file = "../paga.rds")
   
   
   #### Clean-Up Metadata ####
@@ -1048,9 +969,7 @@ mouse_process <- function(datasetID){
   
   # last chance to rename any 
   plaqviewobj@meta.data$Seurat_Clusters <- plaqviewobj@meta.data$seurat_clusters
-  plaqviewobj@meta.data$Author_Provided <- plaqviewobj@meta.data$manually_annotated_labels
-  plaqviewobj@meta.data$Seurat_with_Tabula_Ref <- plaqviewobj@meta.data$predicted.id_Tabula
-  
+
   # choose which ones to keep for display
   plaqviewobj@meta.data <- 
     plaqviewobj@meta.data[, which(colnames(plaqviewobj@meta.data)
@@ -1067,43 +986,50 @@ mouse_process <- function(datasetID){
   #### STEP6: REDUCE SIZE & OUTPUT ####
   plaqviewobj <- DietSeurat(plaqviewobj, counts = T, data = T, dimreducs = c('umap'))
   
-  saveRDS(plaqviewobj, file = "PROCESSED_NEEDTORENAME.rds")
-  saveRDS(plaqviewobj.cds, file = "PROCESSED_CDS_NO_FOR_PLAQVIEW_NEEDTORENAME.rds")
+  saveRDS(plaqviewobj, file = "../PROCESSED_NEEDTORENAME.rds")
+  # saveRDS(plaqviewobj.cds, file = "../PROCESSED_CDS_NO_FOR_PLAQVIEW_NEEDTORENAME.rds")
   
-  plaqviewobj <- readRDS(file = "PROCESSED_NEEDTORENAME.rds")
+  plaqviewobj <- readRDS(file = "../PROCESSED_NEEDTORENAME.rds")
   
   #### STEP7: DIFF EX GENE LIST ####
   Idents(object = plaqviewobj) <- "SingleR.calls"
   difflist <- Seurat::FindAllMarkers(plaqviewobj)
-  write_csv(difflist, file = "diff_by_singleR.csv")
+  write_csv(difflist, file = "../diff_by_singleR.csv")
   
   Idents(object = plaqviewobj) <- "Author_Provided"
   difflist <- Seurat::FindAllMarkers(plaqviewobj)
-  write_csv(difflist, file = "diff_by_author.csv")
+  write_csv(difflist, file = "../diff_by_author.csv")
   
   Idents(object = plaqviewobj) <- "Seurat_Clusters"
   difflist <- Seurat::FindAllMarkers(plaqviewobj)
-  write_csv(difflist, file = "diff_by_seurat.csv")
+  write_csv(difflist, file = "../diff_by_seurat.csv")
   
   Idents(object = plaqviewobj) <- "Seurat_with_Tabula_Ref"
   difflist <- Seurat::FindAllMarkers(plaqviewobj)
-  write_csv(difflist, file = "diff_by_predicted.id_Tabula.csv")
+  write_csv(difflist, file = "../diff_by_predicted.id_Tabula.csv")
   
   
-  
+  ####
   
   
   
   
   
 }
+#### Read Current Available Data Sets ####
+# this needs to point to the set spreadsheet
+all.data <- 
+  read_excel("data/Available_datasets.xlsx")
+
+#### Pull Out Human and Mouse Data IDs ####
+humanIDs <- all.data$DataID[all.data$Species == "Human"]
+mouseIDs <- all.data$DataID[all.data$Species == "Mouse"]
+
 #### Apply Functions for Human Sets ####
 # lapply(humanIDs, human_process)
 
-human_process(datasetID = "Alencar_2020")
+human_process(datasetID = "Li_2020")
+human_process(datasetID = "Wirka_2019")
 
 #### Apply Functions for Mouse Sets ####
 # tapply: Apply a function to subsets of a vector X and defined the subset by vector Y.
-
-
-
