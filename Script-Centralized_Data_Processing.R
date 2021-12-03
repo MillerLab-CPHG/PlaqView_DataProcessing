@@ -3,7 +3,7 @@
 library(Seurat)
 library(patchwork)
 library(readr)
-# library(scCATCH)
+# library(scCATCH) # doesnt work well!
 library(SingleR)
 library(tidyverse)
 library(monocle3)
@@ -15,7 +15,7 @@ library(readxl)
 library(SeuratDisk)
 library(celldex) # BiocManager::install("celldex")
 
-library(symphony)
+# library(symphony) # doesnt work well!
 library(tidyverse)
 library(data.table)
 library(matrixStats)
@@ -52,7 +52,7 @@ human_process <- function(datasetID){
   #### STEP1: READ DATASET DIRECTORY ####
   # you must change this if your source is different
   # get this to the dataprocessing - data folder in the first piece
-  path.to.destination <- file.path(paste("~/wm5wt@virginia.edu - Google Drive/My Drive/UVA/Grad School/Projects/PlaqView/DataProcessing/data/",
+  path.to.destination <- file.path(paste("data/",
                                          datasetID, "/source_files", sep=""))
   
   setwd(path.to.destination) 
@@ -65,7 +65,7 @@ human_process <- function(datasetID){
   
   #### STEP2: SEURAT PROCESS ####
   # Run the standard workflow for visualization and clustering
-  plaqviewobj <- NormalizeData(plaqviewobj, normalization.method = "LogNormalize", scale.factor = 10000)
+  plaqviewobj <- NormalizeData(plaqviewobj)
   plaqviewobj <- FindVariableFeatures(plaqviewobj, verbose = T, nfeatures = 2000)
   plaqviewobj <- ScaleData(plaqviewobj, verbose = T)
   
@@ -359,90 +359,90 @@ human_process <- function(datasetID){
   dev.off()
   
   
-  #### STEP5A: DYNO TRAJECTORY INFERENCES ####
-  object_counts <- Matrix::t(Matrix(plaqviewobj@assays$RNA@counts, sparse = T))
-  object_expression <- Matrix::t(Matrix(plaqviewobj@assays$RNA@data, sparse = T))
-  object_cellinfo <- plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]]
-  
-  plaqviewobj.dyno <- wrap_expression(
-    counts = object_counts,
-    expression = object_expression)
-  
-  
-  # may need to run this to clear out memory
-  # rm(list= ls()[!(ls() %in% c('plaqviewobj.dyno','plaqviewobj','object_cellinfo'))])
-  # gc()
-  
-  
-  
-  # may need to run this to clear out memory
-  # rm(list= ls()[!(ls() %in% c('plaqviewobj.dyno','plaqviewobj','object_cellinfo'))])
-  # gc()
-  
-  #### STEP5B: SlingShot ####
-  # make sure to call up docker images
-
-  model <- infer_trajectory(plaqviewobj.dyno, "slingshot", verbose = T,
-                            cluster_method = 'clara') # THIS IS ADDED TO REDUCE MEM REQ
-
-  # add dim reduction
-  model <- model %>%
-    add_dimred(dimred = as.matrix(plaqviewobj@reductions$umap@cell.embeddings),
-               expression_source = plaqviewobj.dyno$expression)
-
-  pdf("../dyno_slingshot_full.pdf", width=7, height=6)
-  slingshot <- plot_dimred(
-    model,
-    expression_source = plaqviewobj.dyno$expression,
-    grouping = object_cellinfo # basically stanford@meta.data[["SingleR.calls"]]
-  )
-
-  saveRDS(slingshot, file = "../slingshot.rds")
-  slingshot
-  dev.off()
-
-  #### STEP5C: scorpius ####
-  # make sure to call up docker images
-
-  model <- infer_trajectory(plaqviewobj.dyno, "scorpius", verbose = T,
-                            cluster_method = 'clara') # THIS IS ADDED TO REDUCE MEM REQ
-
-  # add dim reduction
-  model <- model %>%
-    add_dimred(dimred = as.matrix(plaqviewobj@reductions$umap@cell.embeddings),
-               expression_source = plaqviewobj.dyno$expression)
-
-  pdf("../dyno_scorpius_full.pdf", width=7, height=6)
-  scorpius <- plot_dimred(
-    model,
-    expression_source = plaqviewobj.dyno$expression,
-    grouping = object_cellinfo # basically plaqviewobj@meta.data[["SingleR.calls"]]
-  )
-
-  saveRDS(scorpius, file = "../scorpius.rds")
-  scorpius
-  dev.off()
-
-  #### STEP5D: PAGA ####
-  model <- infer_trajectory(plaqviewobj.dyno, "projected_paga", verbose = T,
-                            cluster_method = 'clara') # THIS IS ADDED TO REDUCE MEM REQ
-
-  #### PAGA: project the model ###
-  # add dim reduction
-  model <- model %>%
-    add_dimred(dimred = as.matrix(plaqviewobj@reductions$umap@cell.embeddings),
-               expression_source = plaqviewobj.dyno$expression)
-  
-  pdf("../dyno_paga_full.pdf", width=7, height=6)
-  paga <- plot_dimred(
-    model,
-    expression_source = plaqviewobj.dyno$expression,
-    grouping = object_cellinfo # basically stanford@meta.data[["SingleR.calls"]]
-  )
-  paga
-  saveRDS(paga, file = "../paga.rds")
-  dev.off()
-  
+  ## DEPRECATED## #### STEP5A: DYNO TRAJECTORY INFERENCES ####
+  # object_counts <- Matrix::t(Matrix(plaqviewobj@assays$RNA@counts, sparse = T))
+  # object_expression <- Matrix::t(Matrix(plaqviewobj@assays$RNA@data, sparse = T))
+  # object_cellinfo <- plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]]
+  # 
+  # plaqviewobj.dyno <- wrap_expression(
+  #   counts = object_counts,
+  #   expression = object_expression)
+  # 
+  # 
+  # # may need to run this to clear out memory
+  # # rm(list= ls()[!(ls() %in% c('plaqviewobj.dyno','plaqviewobj','object_cellinfo'))])
+  # # gc()
+  # 
+  # 
+  # 
+  # # may need to run this to clear out memory
+  # # rm(list= ls()[!(ls() %in% c('plaqviewobj.dyno','plaqviewobj','object_cellinfo'))])
+  # # gc()
+  # 
+  # #### STEP5B: SlingShot #### d
+  # # make sure to call up docker images
+  # 
+  # model <- infer_trajectory(plaqviewobj.dyno, "slingshot", verbose = T,
+  #                           cluster_method = 'clara') # THIS IS ADDED TO REDUCE MEM REQ
+  # 
+  # # add dim reduction
+  # model <- model %>%
+  #   add_dimred(dimred = as.matrix(plaqviewobj@reductions$umap@cell.embeddings),
+  #              expression_source = plaqviewobj.dyno$expression)
+  # 
+  # pdf("../dyno_slingshot_full.pdf", width=7, height=6)
+  # slingshot <- plot_dimred(
+  #   model,
+  #   expression_source = plaqviewobj.dyno$expression,
+  #   grouping = object_cellinfo # basically stanford@meta.data[["SingleR.calls"]]
+  # )
+  # 
+  # saveRDS(slingshot, file = "../slingshot.rds")
+  # slingshot
+  # dev.off()
+  # 
+  ## DEPRECATED## #### STEP5C: scorpius ####
+  # # make sure to call up docker images
+  # 
+  # model <- infer_trajectory(plaqviewobj.dyno, "scorpius", verbose = T,
+  #                           cluster_method = 'clara') # THIS IS ADDED TO REDUCE MEM REQ
+  # 
+  # # add dim reduction
+  # model <- model %>%
+  #   add_dimred(dimred = as.matrix(plaqviewobj@reductions$umap@cell.embeddings),
+  #              expression_source = plaqviewobj.dyno$expression)
+  # 
+  # pdf("../dyno_scorpius_full.pdf", width=7, height=6)
+  # scorpius <- plot_dimred(
+  #   model,
+  #   expression_source = plaqviewobj.dyno$expression,
+  #   grouping = object_cellinfo # basically plaqviewobj@meta.data[["SingleR.calls"]]
+  # )
+  # 
+  # saveRDS(scorpius, file = "../scorpius.rds")
+  # scorpius
+  # dev.off()
+  # 
+  ## DEPRECATED## #### STEP5D: PAGA ####
+  # model <- infer_trajectory(plaqviewobj.dyno, "projected_paga", verbose = T,
+  #                           cluster_method = 'clara') # THIS IS ADDED TO REDUCE MEM REQ
+  # 
+  # #### PAGA: project the model ###
+  # # add dim reduction
+  # model <- model %>%
+  #   add_dimred(dimred = as.matrix(plaqviewobj@reductions$umap@cell.embeddings),
+  #              expression_source = plaqviewobj.dyno$expression)
+  # 
+  # pdf("../dyno_paga_full.pdf", width=7, height=6)
+  # paga <- plot_dimred(
+  #   model,
+  #   expression_source = plaqviewobj.dyno$expression,
+  #   grouping = object_cellinfo # basically stanford@meta.data[["SingleR.calls"]]
+  # )
+  # paga
+  # saveRDS(paga, file = "../paga.rds")
+  # dev.off()
+  # 
   #### Clean-Up Metadata ####
   # show all metadata columns
   names(plaqviewobj@meta.data)
@@ -498,6 +498,8 @@ human_process <- function(datasetID){
 
   
 }
+
+
 #### Function for Mouse Data ####
 mouse_process <- function(datasetID){
   path.to.unprocessed <- file.path(paste("data/", datasetID, "/source_files/",
@@ -1033,8 +1035,11 @@ mouseIDs <- all.data$DataID[all.data$Species == "Mouse"]
 #### Apply Functions for Human Sets ####
 # lapply(humanIDs, human_process)
 
-human_process(datasetID = "Li_2020")
-human_process(datasetID = "Wirka_2019")
+# human_process(datasetID = "Li_2020")
+# human_process(datasetID = "Wirka_2019")
+human_process(datasetID = "Litvinukova_2020")
+# human_process(datasetID = "Alsaigh_2020")
+
 
 #### Apply Functions for Mouse Sets ####
 # tapply: Apply a function to subsets of a vector X and defined the subset by vector Y.

@@ -24,6 +24,13 @@
       "Source": "Bioconductor",
       "Hash": "36d1cc3c7c186d2ec894e0835a0e611a"
     },
+    "BB": {
+      "Package": "BB",
+      "Version": "2019.10-1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "8a2c9815ca03694a530518f4749dbe30"
+    },
     "BH": {
       "Package": "BH",
       "Version": "1.75.0-0",
@@ -334,6 +341,13 @@
       "Source": "Bioconductor",
       "Hash": "a750488825efca8e08a30e8157821b9b"
     },
+    "SCORPIUS": {
+      "Package": "SCORPIUS",
+      "Version": "1.0.8",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "651dfaadf41fa4039942acd7577f014d"
+    },
     "ScaledMatrix": {
       "Package": "ScaledMatrix",
       "Version": "1.0.0",
@@ -379,6 +393,19 @@
       "Repository": "CRAN",
       "Hash": "e5959242d66cfe4de9116fdcec327f80"
     },
+    "SeuratWrappers": {
+      "Package": "SeuratWrappers",
+      "Version": "0.3.0",
+      "Source": "GitHub",
+      "Remotes": "welch-lab/liger, hms-dbmi/conos, immunogenomics/harmony,\nimmunogenomics/presto, satijalab/seurat-data,\nvelocyto-team/velocyto.R, SaskiaFreytag/schex@031320d,\ncole-trapnell-lab/monocle3, mojaveazure/seurat-disk,\npowellgenomicslab/Nebulosa, atakanekiz/CIPR-Package",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteRepo": "seurat-wrappers",
+      "RemoteUsername": "satijalab",
+      "RemoteRef": "HEAD",
+      "RemoteSha": "8510069e76ae8f39c91250d67784e4b8ab4a9386",
+      "Hash": "97b6013e77b5339e524eedc88dd12f45"
+    },
     "SingleCellExperiment": {
       "Package": "SingleCellExperiment",
       "Version": "1.14.1",
@@ -396,6 +423,13 @@
       "Version": "1.22.0",
       "Source": "Bioconductor",
       "Hash": "74391cb9cefb4bcdffc38778fea7ecf3"
+    },
+    "TSP": {
+      "Package": "TSP",
+      "Version": "1.1-11",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "b72b16750535acbc63e1337d38ff1ace"
     },
     "VGAM": {
       "Package": "VGAM",
@@ -464,6 +498,12 @@
       "Version": "1.8.1",
       "Source": "Bioconductor",
       "Hash": "ecf5081e7928129adb7c96ca61632910"
+    },
+    "bayNorm": {
+      "Package": "bayNorm",
+      "Version": "1.10.0",
+      "Source": "Bioconductor",
+      "Hash": "b1bd950b73bd02917d2884c24c709fec"
     },
     "beachmat": {
       "Package": "beachmat",
@@ -735,6 +775,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "49b5c6e230bfec487b8917d5a0c77cca"
+    },
+    "doSNOW": {
+      "Package": "doSNOW",
+      "Version": "1.0.19",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "d37ea40b304eec255022065947092af6"
     },
     "dplyr": {
       "Package": "dplyr",
@@ -1402,6 +1449,13 @@
       "Repository": "CRAN",
       "Hash": "3354c874f6008f7f1e418526df8ecd8a"
     },
+    "locfit": {
+      "Package": "locfit",
+      "Version": "1.5-9.4",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "760b5b542e8435237d1b3c253bfe18e7"
+    },
     "lubridate": {
       "Package": "lubridate",
       "Version": "1.7.10",
@@ -1429,6 +1483,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "915f59111573046dc425410b435ab5ed"
+    },
+    "mclust": {
+      "Package": "mclust",
+      "Version": "5.4.8",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "b45b8daa2958ac3796375429f8b78e51"
     },
     "memoise": {
       "Package": "memoise",
@@ -1534,6 +1595,12 @@
       "Repository": "CRAN",
       "Hash": "4332529a23c4995d743ef489be54a839"
     },
+    "pcaMethods": {
+      "Package": "pcaMethods",
+      "Version": "1.84.0",
+      "Source": "Bioconductor",
+      "Hash": "0dd8bdb68f8a872fcf7f247e9659f83a"
+    },
     "pheatmap": {
       "Package": "pheatmap",
       "Version": "1.0.12",
@@ -1618,6 +1685,13 @@
       "Repository": "CRAN",
       "Hash": "95ef9167b75dde9d2ccc3c7528393e7e"
     },
+    "princurve": {
+      "Package": "princurve",
+      "Version": "2.1.6",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "1e3d2690c203c82497e5520ba152d094"
+    },
     "processx": {
       "Package": "processx",
       "Version": "3.5.2",
@@ -1680,6 +1754,19 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "97def703420c8ab10d8f0e6c72101e02"
+    },
+    "quadprog": {
+      "Package": "quadprog",
+      "Version": "1.5-8",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "5f919ae5e7f83a6f91dcf2288943370d"
+    },
+    "rDGIdb": {
+      "Package": "rDGIdb",
+      "Version": "1.18.0",
+      "Source": "Bioconductor",
+      "Hash": "4634ad8925d00416c06789c2c00fc00e"
     },
     "ragg": {
       "Package": "ragg",
@@ -2246,6 +2333,18 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "ecf749a1b39ea72bd9b51b76292261f1"
+    },
+    "velocyto.R": {
+      "Package": "velocyto.R",
+      "Version": "0.6",
+      "Source": "GitHub",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteRepo": "velocyto.R",
+      "RemoteUsername": "velocyto-team",
+      "RemoteRef": "HEAD",
+      "RemoteSha": "83e6ed92c2d9c9640122dcebf8ebbb5788165a21",
+      "Hash": "4d1666babab32c264258f24d27b526d5"
     },
     "vipor": {
       "Package": "vipor",
