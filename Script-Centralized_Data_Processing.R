@@ -1,25 +1,21 @@
 #### IMPORTANT: SET TO RESPECTIVE DIRECTORY in FUNCTIONS ####
 #### Library and data loading ----
-library(Seurat)
-library(patchwork)
-library(readr)
-# library(scCATCH) # doesnt work well!
-library(SingleR)
-library(tidyverse)
-library(monocle3)
-library(SeuratData)
-library(magrittr)
-library(ggrepel)
-library(dyno) # devtools::install_github("dynverse/dyno")
-library(readxl)
-library(SeuratDisk)
+library(tidyverse) # CRAN
+library(Seurat) # CRAN
+library(patchwork) # CRAN
+library(readr) # CRAN
+library(SingleR) # BIOCONDUCTOR
+library(tidyverse) # CRAN
+library(monocle3) # SPECIFIC INSTALLATION ON WEBSITE
+library(SeuratData) # satijalab/seurat-data
+library(magrittr)# CRAN
+library(ggrepel)# CRAN
+# library(dyno) # devtools::install_github("dynverse/dyno")
+library(SeuratDisk) # remotes::install_github("mojaveazure/seurat-disk")
 library(celldex) # BiocManager::install("celldex")
-
-# library(symphony) # doesnt work well!
-library(tidyverse)
-library(data.table)
-library(matrixStats)
-library(Matrix)
+library(data.table) # CRAN
+library(matrixStats)# CRAN
+library(Matrix)# CRAN
 library(bayNorm) # for transposition of sparase matrix
 
 original_color_list <-
@@ -52,7 +48,7 @@ human_process <- function(datasetID){
   #### STEP1: READ DATASET DIRECTORY ####
   # you must change this if your source is different
   # get this to the dataprocessing - data folder in the first piece
-  path.to.destination <- file.path(paste("data/",
+  path.to.destination <- file.path(paste("~/My Drive (wm5wt@virginia.edu)/UVA/Grad School/Projects/PlaqView/DataProcessing/data/",
                                          datasetID, "/source_files", sep=""))
   
   setwd(path.to.destination) 
@@ -61,7 +57,7 @@ human_process <- function(datasetID){
   plaqviewobj <- UpdateSeuratObject(plaqviewobj)
   
   #### STEP1B: READ REFERENCE ####
-  humanatlasref <- LoadH5Seurat(file = "~/wm5wt@virginia.edu - Google Drive/My Drive/UVA/Grad School/Projects/PlaqView/DataProcessing/references/Tabula_sapiens_reference/TS_Vasculature.h5seurat", assays = "RNA")
+  humanatlasref <- LoadH5Seurat(file = "../../../references/Tabula_sapiens_reference/TS_Vasculature.h5seurat", assays = "RNA")
   
   #### STEP2: SEURAT PROCESS ####
   # Run the standard workflow for visualization and clustering
@@ -358,6 +354,7 @@ human_process <- function(datasetID){
              scale_to_range = T) 
   dev.off()
   
+  saveRDS(plaqviewobj.cds, file = "PROCESSED_CDS_NEEDSTORENAME.RDS")
   
   ## DEPRECATED## #### STEP5A: DYNO TRAJECTORY INFERENCES ####
   # object_counts <- Matrix::t(Matrix(plaqviewobj@assays$RNA@counts, sparse = T))
@@ -1036,8 +1033,8 @@ mouseIDs <- all.data$DataID[all.data$Species == "Mouse"]
 # lapply(humanIDs, human_process)
 
 # human_process(datasetID = "Li_2020")
-# human_process(datasetID = "Wirka_2019")
-human_process(datasetID = "Litvinukova_2020")
+ human_process(datasetID = "Wirka_2019")
+#human_process(datasetID = "Litvinukova_2020")
 # human_process(datasetID = "Alsaigh_2020")
 
 
