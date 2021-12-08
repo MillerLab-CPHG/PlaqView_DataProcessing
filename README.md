@@ -5,8 +5,6 @@
 
  # PlaqView Data Processing Steps
 
- This is a step-by-step guide on processing scRNA-seq data from public respository. Also serves as a guide for future PlaqView maintainers and for peer-review. This is very detailed and will be continuously updated as needed.
-
  Wei Feng Ma, MSTP UVA. Miller Lab.
 
  ## Gathering Data
@@ -26,6 +24,7 @@
  Note that this is continuously being updated so please refer to the closest available .r processing file on GitHub!
 
  *IMPORTANT*
- 1) make sure author-provided labels are under metadata "Author_Provided".
+ 1) use dockerized rstudio session for reproducible environment and guarantee package install. See: https://github.com/MillerLab-CPHG/Dockerfile_Plaqview
+ 2) make sure author-provided labels are under metadata "Author_Provided".
 
-![]()<img src="www/PlaqView_data_processing_diagram_05162021.png" alt="Preprocessing_steps"/>
+![]()<img src="www/Complete_PlaqView.drawio.png" alt="Preprocessing_steps"/>
