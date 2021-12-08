@@ -48,7 +48,7 @@ human_process <- function(datasetID){
   #### STEP1: READ DATASET DIRECTORY ####
   # you must change this if your source is different
   # get this to the dataprocessing - data folder in the first piece
-  path.to.destination <- file.path(paste("~/My Drive (wm5wt@virginia.edu)/UVA/Grad School/Projects/PlaqView/DataProcessing/data/",
+  path.to.destination <- file.path(paste("~/Documents/My Drive (wm5wt@virginia.edu)/UVA/Grad School/Projects/PlaqView/DataProcessing/data/",
                                          datasetID, "/source_files", sep=""))
   
   setwd(path.to.destination) 
