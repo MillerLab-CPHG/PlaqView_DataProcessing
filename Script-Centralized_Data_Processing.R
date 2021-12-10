@@ -1,4 +1,7 @@
 #### IMPORTANT: SET TO RESPECTIVE DIRECTORY in FUNCTIONS ####
+# point this FROM THE ROOT "./" to DataProcessing's 'data' folder 
+root.to.data <- "~/Documents/My Drive/PlaqView_Master/DataProcessing/data/"
+
 #### Library and data loading ----
 library(tidyverse) # CRAN
 library(Seurat) # CRAN
@@ -45,10 +48,10 @@ manual_color_list <- color_function(40) # change this if clusters >40
 
 #### Function for Human Data ####
 human_process <- function(datasetID){
-  #### STEP1: READ DATASET DIRECTORY ####
+  #### STEP 1: READ DATASET DIRECTORY ####
   # you must change this if your source is different
   # get this to the dataprocessing - data folder in the first piece
-  path.to.destination <- file.path(paste("~/Documents/My Drive (wm5wt@virginia.edu)/UVA/Grad School/Projects/PlaqView/DataProcessing/data/",
+  path.to.destination <- file.path(paste(root.to.data,
                                          datasetID, "/source_files", sep=""))
   
   setwd(path.to.destination) 
@@ -56,10 +59,10 @@ human_process <- function(datasetID){
   plaqviewobj <- readRDS(file = "UNPROCESSED.rds")
   plaqviewobj <- UpdateSeuratObject(plaqviewobj)
   
-  #### STEP1B: READ REFERENCE ####
+  #### STEP 1B: READ REFERENCE ####
   humanatlasref <- LoadH5Seurat(file = "../../../references/Tabula_sapiens_reference/TS_Vasculature.h5seurat", assays = "RNA")
   
-  #### STEP2: SEURAT PROCESS ####
+  #### STEP 2: SEURAT PROCESS ####
   # Run the standard workflow for visualization and clustering
   plaqviewobj <- NormalizeData(plaqviewobj)
   plaqviewobj <- FindVariableFeatures(plaqviewobj, verbose = T, nfeatures = 2000)
@@ -70,7 +73,7 @@ human_process <- function(datasetID){
   plaqviewobj <- FindNeighbors(plaqviewobj, reduction = "pca", dims = 1:20)
   plaqviewobj <- FindClusters(plaqviewobj, resolution = 0.5)
   
-  #### STEP3: SINGLER ----
+  #### STEP 3: SINGLER ----
   # BiocManager::install("SingleR")
   # here we are using Human Primary Cell Atlas design for blood
   # https://bioconductor.org/packages/3.12/data/experiment/vignettes/celldex/inst/doc/userguide.html#2_General-purpose_references
@@ -103,7 +106,7 @@ human_process <- function(datasetID){
   plaqviewobj$SingleR.pruned.calls <- pred.plaqviewobj$pruned.labels
   plaqviewobj$SingleR.calls <- pred.plaqviewobj$labels
 
-  #### STEP3A: RECODE SINGLE-R LABELS ----
+  #### STEP 3A: RECODE SINGLE-R LABELS ----
   plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], Smooth_muscle_cells = "SMC")
   plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], Endothelial_cells = "EC")
   plaqviewobj@meta.data[["SingleR.calls"]] <- recode(plaqviewobj@meta.data[["SingleR.calls"]], NK_cell = "NK")
@@ -121,65 +124,14 @@ human_process <- function(datasetID){
   table(plaqviewobj@meta.data[["SingleR.calls"]])
 
 
-  ## DEPRECATED## #### STEP3B: scCATCH ####
-  # Idents(object = plaqviewobj) <- "seurat_clusters"
-  # 
-  # clu_markers <- findmarkergenes(
-  #   plaqviewobj,
-  #   species = "Human",
-  #   cluster = 'All',
-  #   match_CellMatch = FALSE, # set T for large dataset
-  #   cancer = NULL,
-  #   tissue = NULL,
-  #   cell_min_pct = 0.25,
-  #   logfc = 0.25,
-  #   pvalue = 0.05
-  # )
-  # 
-  # 
-  # ## blood vessell ##
-  # clu_ann_BV <- scCATCH(clu_markers$clu_markers,
-  #                       species = "Human",
-  #                       cancer = NULL,
-  #                       tissue = "Blood vessel")
-  # 
-  # bv_annotations <- clu_ann_BV$cell_type
-  # names(bv_annotations) <- levels(plaqviewobj)
-  # bv_annotations <- replace_na(bv_annotations, "Unknown")
-  # plaqviewobj[["scCATCH_BV"]] <- bv_annotations[match(plaqviewobj@meta.data$seurat_clusters, names(bv_annotations))]
-  # 
-  # ## heart ##
-  # clu_ann_HT <- scCATCH(clu_markers$clu_markers,
-  #                       species = "Human",
-  #                       cancer = NULL,
-  #                       tissue = "Heart")
-  # # write.csv(clu_ann, file = "scCATCH_vs_singleR_heart.csv")
-  # bv_annotations <- clu_ann_HT$cell_type
-  # names(bv_annotations) <- levels(plaqviewobj)
-  # bv_annotations <- replace_na(bv_annotations, "Unknown")
-  # plaqviewobj[["scCATCH_Heart"]] <- bv_annotations[match(plaqviewobj@meta.data$seurat_clusters, names(bv_annotations))]
-  # 
-  # 
-  # ## blood ###
-  # clu_ann_Blood <- scCATCH(clu_markers$clu_markers,
-  #                          species = "Human",
-  #                          cancer = NULL,
-  #                          tissue = "Blood")
-  # # write.csv(clu_ann, file = "scCATCH_vs_singleR_blood.csv")
-  # 
-  # bv_annotations <- clu_ann_Blood$cell_type
-  # names(bv_annotations) <- levels(plaqviewobj)
-  # bv_annotations <- replace_na(bv_annotations, "Unknown")
-  # plaqviewobj[["scCATCH_Blood"]] <- bv_annotations[match(plaqviewobj@meta.data$seurat_clusters, names(bv_annotations))]
-  # 
-  # #### STEP3B: SYMPHONY ####
+  # #### STEP 3B: SYMPHONY ####
   # ref_pbmcs = readRDS('references/Symphony_ref_data/fibroblast_atlas.rds')
   # 
   # query = symphony::mapQuery(plaqviewobj@assays$RNA, plaqviewobj@meta.data, ref_pbmcs, 
   #                  vars = plaqviewobj@meta.data, 
   #                  do_normalize = TRUE)
   # 
-  #### STEP3C: SEURAT/TABULA SAPIENS LABELING ####
+  #### STEP 3C: SEURAT/TABULA SAPIENS LABELING ####
 
   #### preprocess ref seurat 
   Idents(humanatlasref) <-  humanatlasref@meta.data[["Annotation"]]
@@ -206,7 +158,7 @@ human_process <- function(datasetID){
   # set to active idents
   Idents(plaqviewobj) <- plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]]
   
-  #### STEP3D: RECODE SEURAT/TABULA SAPIENS ####
+  #### STEP 3D: RECODE SEURAT/TABULA SAPIENS ####
   plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]] <- recode(plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]], 
                                                                    'Smooth Muscle Cell' = "SMCs")
   plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]] <- recode(plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]], 
@@ -237,8 +189,8 @@ human_process <- function(datasetID){
     theme(plot.title = element_text(hjust =  0.5)) +
     guides(color = guide_legend(nrow = 5))
   
-  #### STEP3E: RESERVED SPACE #### 
-  #### STEP4: MONOCLE3 TRAJECTORY INFERENCE ----
+  #### STEP 3E: RESERVED SPACE #### 
+  #### STEP 4: MONOCLE3 TRAJECTORY INFERENCE ----
   # in previous versions we tried the seurat wrapper it just didnt work
   # below we manually wrap the data ourselves
   
@@ -356,91 +308,7 @@ human_process <- function(datasetID){
   
   saveRDS(plaqviewobj.cds, file = "PROCESSED_CDS_NEEDSTORENAME.RDS")
   
-  ## DEPRECATED## #### STEP5A: DYNO TRAJECTORY INFERENCES ####
-  # object_counts <- Matrix::t(Matrix(plaqviewobj@assays$RNA@counts, sparse = T))
-  # object_expression <- Matrix::t(Matrix(plaqviewobj@assays$RNA@data, sparse = T))
-  # object_cellinfo <- plaqviewobj@meta.data[["Seurat_with_Tabula_Ref"]]
-  # 
-  # plaqviewobj.dyno <- wrap_expression(
-  #   counts = object_counts,
-  #   expression = object_expression)
-  # 
-  # 
-  # # may need to run this to clear out memory
-  # # rm(list= ls()[!(ls() %in% c('plaqviewobj.dyno','plaqviewobj','object_cellinfo'))])
-  # # gc()
-  # 
-  # 
-  # 
-  # # may need to run this to clear out memory
-  # # rm(list= ls()[!(ls() %in% c('plaqviewobj.dyno','plaqviewobj','object_cellinfo'))])
-  # # gc()
-  # 
-  # #### STEP5B: SlingShot #### d
-  # # make sure to call up docker images
-  # 
-  # model <- infer_trajectory(plaqviewobj.dyno, "slingshot", verbose = T,
-  #                           cluster_method = 'clara') # THIS IS ADDED TO REDUCE MEM REQ
-  # 
-  # # add dim reduction
-  # model <- model %>%
-  #   add_dimred(dimred = as.matrix(plaqviewobj@reductions$umap@cell.embeddings),
-  #              expression_source = plaqviewobj.dyno$expression)
-  # 
-  # pdf("../dyno_slingshot_full.pdf", width=7, height=6)
-  # slingshot <- plot_dimred(
-  #   model,
-  #   expression_source = plaqviewobj.dyno$expression,
-  #   grouping = object_cellinfo # basically stanford@meta.data[["SingleR.calls"]]
-  # )
-  # 
-  # saveRDS(slingshot, file = "../slingshot.rds")
-  # slingshot
-  # dev.off()
-  # 
-  ## DEPRECATED## #### STEP5C: scorpius ####
-  # # make sure to call up docker images
-  # 
-  # model <- infer_trajectory(plaqviewobj.dyno, "scorpius", verbose = T,
-  #                           cluster_method = 'clara') # THIS IS ADDED TO REDUCE MEM REQ
-  # 
-  # # add dim reduction
-  # model <- model %>%
-  #   add_dimred(dimred = as.matrix(plaqviewobj@reductions$umap@cell.embeddings),
-  #              expression_source = plaqviewobj.dyno$expression)
-  # 
-  # pdf("../dyno_scorpius_full.pdf", width=7, height=6)
-  # scorpius <- plot_dimred(
-  #   model,
-  #   expression_source = plaqviewobj.dyno$expression,
-  #   grouping = object_cellinfo # basically plaqviewobj@meta.data[["SingleR.calls"]]
-  # )
-  # 
-  # saveRDS(scorpius, file = "../scorpius.rds")
-  # scorpius
-  # dev.off()
-  # 
-  ## DEPRECATED## #### STEP5D: PAGA ####
-  # model <- infer_trajectory(plaqviewobj.dyno, "projected_paga", verbose = T,
-  #                           cluster_method = 'clara') # THIS IS ADDED TO REDUCE MEM REQ
-  # 
-  # #### PAGA: project the model ###
-  # # add dim reduction
-  # model <- model %>%
-  #   add_dimred(dimred = as.matrix(plaqviewobj@reductions$umap@cell.embeddings),
-  #              expression_source = plaqviewobj.dyno$expression)
-  # 
-  # pdf("../dyno_paga_full.pdf", width=7, height=6)
-  # paga <- plot_dimred(
-  #   model,
-  #   expression_source = plaqviewobj.dyno$expression,
-  #   grouping = object_cellinfo # basically stanford@meta.data[["SingleR.calls"]]
-  # )
-  # paga
-  # saveRDS(paga, file = "../paga.rds")
-  # dev.off()
-  # 
-  #### Clean-Up Metadata ####
+  #### STEP 5: Clean-Up Metadata ####
   # show all metadata columns
   names(plaqviewobj@meta.data)
   
@@ -456,16 +324,19 @@ human_process <- function(datasetID){
                                     "SingleR.calls",
                                     "Seurat_with_Tabula_Ref"  
                                   ))]
-  #### STEP6: REDUCE SIZE & OUTPUT ####
+  #### STEP 6: REDUCE SIZE & SAVE RDS ####
   plaqviewobj <- DietSeurat(plaqviewobj, counts = T, data = T, dimreducs = c('umap'))
   
   final.file.name <- file.path(paste("../", datasetID, ".rds", sep="")) # ../ moves up one level in file
+  final.file.name.cds <- file.path(paste("../", datasetID, "_cds.rds", sep="")) # ../ moves up one level in file
   
   saveRDS(plaqviewobj, file = final.file.name)
+  saveRDS(plaqviewobj.cds, file = final.file.name.cds)
+  
   
   plaqviewobj <- readRDS(file = final.file.name)
   
-  #### STEP7: DIFF EX GENE LIST ####
+  #### STEP 7: DIFF EX GENE LIST ####
   Idents(object = plaqviewobj) <- "SingleR.calls"
   difflist <- Seurat::FindAllMarkers(plaqviewobj)
   write_csv(difflist, file = "../diff_by_singleR.csv")
@@ -484,7 +355,7 @@ human_process <- function(datasetID){
   
 
   
-  #### STEP8: PRINT CELL COUNT, RAM gc ####
+  #### STEP 8: PRINT CELL COUNT, RAM gc ####
   
   n <- summary(plaqviewobj$SingleR.calls)[1]
   tab <- summary(as.factor(plaqviewobj$SingleR.calls))
@@ -1032,10 +903,10 @@ mouseIDs <- all.data$DataID[all.data$Species == "Mouse"]
 #### Apply Functions for Human Sets ####
 # lapply(humanIDs, human_process)
 
-# human_process(datasetID = "Li_2020")
- human_process(datasetID = "Wirka_2019")
-#human_process(datasetID = "Litvinukova_2020")
-# human_process(datasetID = "Alsaigh_2020")
+human_process(datasetID = "Li_2020")
+human_process(datasetID = "Wirka_2019")
+human_process(datasetID = "Litvinukova_2020")
+human_process(datasetID = "Alsaigh_2020")
 
 
 #### Apply Functions for Mouse Sets ####
