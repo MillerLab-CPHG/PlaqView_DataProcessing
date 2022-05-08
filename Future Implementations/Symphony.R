@@ -4,7 +4,7 @@ library(symphony)
 
 suppressPackageStartupMessages({
   library(symphony)
-  library(singlecellmethods)
+  library(singlecellmethods) #devtools::install_github("immunogenomics/singlecellmethods")
   library(tidyverse)
   library(data.table)
   library(matrixStats)

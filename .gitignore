@@ -17,3 +17,35 @@ alencar_2020_mouse/Original Data from Katie Oswainy/scRNAseq count matrices/Exp3
 *.history
 .DS_Store
 .Rhistory
+archival_junk
+archive_junk/alencar_2020_mouse/Original Data from Katie Oswainy/dual_lineage_tracing/Custom.script_Alencar_data_import.R
+archive_junk/alencar_2020_mouse/Original Data from Katie Oswainy/dual_lineage_tracing/Preprocess_master_mouse_09042021.R
+archive_junk/alencar_2020_mouse/Original Data from Katie Oswainy/KLF4KO/Custom.script_Alencar_data_import.R
+archive_junk/alencar_2020_mouse/Original Data from Katie Oswainy/KLF4KO/Preprocess_master_mouse_09042021 copy.R
+archive_junk/alencar_2020_mouse/Original Data from Katie Oswainy/Raw Count Matrices/Endothelial KOPOS_filtered_gene_bc_matrices/Seurat Tutorial Figures/181116_ECWT_Seurat Tutorial.R
+archive_junk/alencar_2020_mouse/Original Data from Katie Oswainy/Raw Count Matrices/Endothelial KOPOS_filtered_gene_bc_matrices/Seurat Tutorial Figures/ec_combined.markers.xlsx
+archive_junk/alencar_2020_mouse/Original Data from Katie Oswainy/Raw Count Matrices/Endothelial KOPOS_filtered_gene_bc_matrices/Seurat Tutorial Figures/ECKO_Seurat Tutorial.R
+archive_junk/alencar_2020_mouse/Original Data from Katie Oswainy/Raw Count Matrices/Endothelial KOPOS_filtered_gene_bc_matrices/Seurat Tutorial Figures/Violin Plots of the top 2 defining genes in each cluster.png
+archive_junk/Data_Processing_Notes.xlsx
+archive_junk/GEO_to_seurat.R
+archive_junk/pan_2020/PlaqView_preprocessing_master_HUMAN_05-15-21_reprocessfrommingyao.R
+archive_junk/pan_2020/Preprocess_master_human_09042021.R
+archive_junk/pan_2020_mouse/Preprocess_master_mouse_09042021.R
+archive_junk/PlaqView_preprocessing_master_HUMAN_05-04-2021.R
+archive_junk/Preprocess_master_051621 copy.R
+archive_junk/Preprocess_master_07292021.R
+archive_junk/Preprocess_master_human_08272021.R
+archive_junk/Preprocess_master_human_09042021.R
+archive_junk/Preprocess_master_MOUSE_07292021.R
+archive_junk/Preprocess_master_MOUSE_08242021.R
+archive_junk/Preprocess_master_mouse_08302021.R
+archive_junk/Preprocess_master_mouse_09042021.R
+archive_junk/Script-Centralized_Data_Processing_archive_12192021_two species .R
+archive_junk/Script-CITESEQ_Data_Processing.R
+archive_junk/Script-CITESEQ_EXAMPLEg.R
+archive_junk/Script-IMPORT_GEO_to_seurat.R
+archive_junk/Script-IMPORT_H5AD.R
+archive_junk/slender_2021/Preprocess_master_human_09042021.R
+archive_junk/TEMP-TESTING-Script-Centralized_Data_Processing.R
+archive_junk/wirka_2019_mouse/.Rprofile
+archive_junk/wirka_2019_mouse/Preprocess_master_mouse_09042021.R
